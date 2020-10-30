@@ -7,6 +7,8 @@ extern "C" {
 #include "cmd_system.h"
 #include "cmd_wifi.h"
 #include "cmd_nvs.h"
+// #include "cmd_mpu6050.h"
+#include "cmd_i2ctools.h"
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"
