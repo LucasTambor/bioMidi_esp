@@ -18,6 +18,7 @@
 // #include "mpu6050_application.h"
 #include "i2c_app.h"
 #include "i2c_driver.h"
+#include "led_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -45,6 +46,9 @@ TaskHandle_t xTaskConsoleHandle;
 TaskHandle_t xTaskMPU6050Handle;
 TaskHandle_t xTaskI2CReadHandle;
 TaskHandle_t xTaskI2CWriteHandle;
+TaskHandle_t xTaskLedControlHandle;
+
+//**********************************************************************************************************
 
 static void initialize_filesystem(void) {
     ESP_LOGI(TAG, "initialize_filesystem");
@@ -61,6 +65,8 @@ static void initialize_filesystem(void) {
     }
 }
 
+//**********************************************************************************************************
+
 static void initialize_nvs(void) {
     ESP_LOGI(TAG, "initialize_nvs");
 
@@ -72,7 +78,7 @@ static void initialize_nvs(void) {
     ESP_ERROR_CHECK(err);
 }
 
-
+//**********************************************************************************************************
 
 void app_main(void)
 {
@@ -96,7 +102,7 @@ void app_main(void)
                             NULL,                 /* Parameter passed into the task. */
                             osPriorityHigh,       /* Priority at which the task is created. */
                             &xTaskI2CWriteHandle, /* Variable to hold the task's data structure. */
-                            0                     /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+                            APP_CPU_NUM                     /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
                             );
 
     xTaskCreatePinnedToCore(vI2CRead,            /* Function that implements the task. */
@@ -105,17 +111,17 @@ void app_main(void)
                             NULL,                /* Parameter passed into the task. */
                             osPriorityHigh,      /* Priority at which the task is created. */
                             &xTaskI2CReadHandle, /* Variable to hold the task's data structure. */
-                            0                    /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+                            APP_CPU_NUM                    /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
                             );
 
-    // xTaskCreatePinnedToCore(vTaskMPU6050,        /* Function that implements the task. */
-    //                         "vTaskMPU6050",      /* Text name for the task. */
-    //                         STACK_SIZE_2048,     /* Number of indexes in the xStack array. */
-    //                         NULL,                /* Parameter passed into the task. */
-    //                         osPriorityNormal,    /* Priority at which the task is created. */
-    //                         &xTaskMPU6050Handle, /* Variable to hold the task's data structure. */
-    //                         0                    /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
-    //                         );
+    xTaskCreatePinnedToCore(vLedControlTask,        /* Function that implements the task. */
+                            "vLedControlTask",      /* Text name for the task. */
+                            STACK_SIZE_2048,     /* Number of indexes in the xStack array. */
+                            NULL,                /* Parameter passed into the task. */
+                            osPriorityNormal,    /* Priority at which the task is created. */
+                            &xTaskLedControlHandle, /* Variable to hold the task's data structure. */
+                            APP_CPU_NUM                    /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+                            );
 
 
     while(1) {

@@ -10,23 +10,23 @@ extern "C" {
 
 extern QueueHandle_t xQueueLedBuffer;
 
-// //// Those semaphores are used only for apps who would like to block waiting for end of
-// //// transmission or reception if not required to use it's ok
-// extern SemaphoreHandle_t xBinarySemaphoreLed;
-
-/* Structure to manipulate buffer sent or received over I2C */
-
 typedef enum {
-    LED_RED = 0,
+    LED_OFF = 0,
+    LED_RED,
     LED_GREEN,
     LED_BLUE,
-    LED_RAINBOW
+    LED_RAINBOW,
+    LED_RGB
 } led_color_e;
 
 typedef struct
 {
+    bool status;
     led_color_e color;
-    uint8_t freq;
+    uint16_t freq;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
 } LED_Status;
 
 void vLedControlTask( void *pvParameters );

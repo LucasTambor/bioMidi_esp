@@ -141,7 +141,6 @@ static void register_heap(void)
 }
 
 /** 'tasks' command prints the list of tasks and related information */
-#if WITH_TASKS_INFO
 
 static int tasks_info(int argc, char **argv)
 {
@@ -152,9 +151,7 @@ static int tasks_info(int argc, char **argv)
         return 1;
     }
     fputs("Task Name\tStatus\tPrio\tHWM\tTask#", stdout);
-#ifdef CONFIG_FREERTOS_VTASKLIST_INCLUDE_COREID
     fputs("\tAffinity", stdout);
-#endif
     fputs("\n", stdout);
     vTaskList(task_list_buffer);
     fputs(task_list_buffer, stdout);
@@ -173,7 +170,6 @@ static void register_tasks(void)
     ESP_ERROR_CHECK( esp_console_cmd_register(&cmd) );
 }
 
-#endif // WITH_TASKS_INFO
 
 /** 'deep_sleep' command puts the chip into deep sleep mode */
 
