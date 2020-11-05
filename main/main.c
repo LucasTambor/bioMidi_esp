@@ -19,6 +19,7 @@
 #include "i2c_app.h"
 #include "i2c_driver.h"
 #include "led_app.h"
+#include "uart_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -47,6 +48,7 @@ TaskHandle_t xTaskMPU6050Handle;
 TaskHandle_t xTaskI2CReadHandle;
 TaskHandle_t xTaskI2CWriteHandle;
 TaskHandle_t xTaskLedControlHandle;
+TaskHandle_t xTaskUartHandle;
 
 //**********************************************************************************************************
 
@@ -87,40 +89,50 @@ void app_main(void)
     initialize_filesystem();
 
     i2c_init();
+
     //Core 1
-    xTaskCreatePinnedToCore(vTaskConsole,
-                            "TaskConsole",
-                            configMINIMAL_STACK_SIZE + 10000,
+    xTaskCreatePinnedToCore(vTaskConsole,                           /* Function that implements the task. */
+                            "TaskConsole",                          /* Text name for the task. */
+                            configMINIMAL_STACK_SIZE + 10000,       /* Number of indexes in the xStack array. */
+                            NULL,                                   /* Parameter passed into the task. */
+                            osPriorityNormal,                       /* Priority at which the task is created. */
+                            &xTaskConsoleHandle,                    /* Variable to hold the task's data structure. */
+                            APP_CPU_NUM);                           /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+
+    xTaskCreatePinnedToCore(vI2CWrite,
+                            "vI2CWrite",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityHigh,
+                            &xTaskI2CWriteHandle,
+                            APP_CPU_NUM
+                            );
+
+    xTaskCreatePinnedToCore(vI2CRead,
+                            "vI2CRead",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityHigh,
+                            &xTaskI2CReadHandle,
+                            APP_CPU_NUM
+                            );
+
+    xTaskCreatePinnedToCore(vLedControlTask,
+                            "vLedControlTask",
+                            STACK_SIZE_2048,
                             NULL,
                             osPriorityNormal,
-                            &xTaskConsoleHandle,
-                            APP_CPU_NUM);
-
-    xTaskCreatePinnedToCore(vI2CWrite,            /* Function that implements the task. */
-                            "vI2CWrite",          /* Text name for the task. */
-                            STACK_SIZE_2048,      /* Number of indexes in the xStack array. */
-                            NULL,                 /* Parameter passed into the task. */
-                            osPriorityHigh,       /* Priority at which the task is created. */
-                            &xTaskI2CWriteHandle, /* Variable to hold the task's data structure. */
-                            APP_CPU_NUM                     /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+                            &xTaskLedControlHandle,
+                            APP_CPU_NUM
                             );
 
-    xTaskCreatePinnedToCore(vI2CRead,            /* Function that implements the task. */
-                            "vI2CRead",          /* Text name for the task. */
-                            STACK_SIZE_2048,     /* Number of indexes in the xStack array. */
-                            NULL,                /* Parameter passed into the task. */
-                            osPriorityHigh,      /* Priority at which the task is created. */
-                            &xTaskI2CReadHandle, /* Variable to hold the task's data structure. */
-                            APP_CPU_NUM                    /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
-                            );
-
-    xTaskCreatePinnedToCore(vLedControlTask,        /* Function that implements the task. */
-                            "vLedControlTask",      /* Text name for the task. */
-                            STACK_SIZE_2048,     /* Number of indexes in the xStack array. */
-                            NULL,                /* Parameter passed into the task. */
-                            osPriorityNormal,    /* Priority at which the task is created. */
-                            &xTaskLedControlHandle, /* Variable to hold the task's data structure. */
-                            APP_CPU_NUM                    /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+    xTaskCreatePinnedToCore(vDataStream,
+                            "vDataStream",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityHigh,
+                            &xTaskUartHandle,
+                            APP_CPU_NUM
                             );
 
 

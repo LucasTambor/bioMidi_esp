@@ -10,6 +10,7 @@ extern "C" {
 // #include "cmd_mpu6050.h"
 #include "cmd_i2ctools.h"
 #include "cmd_led.h"
+#include "cmd_uart.h"
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"

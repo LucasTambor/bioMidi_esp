@@ -84,6 +84,7 @@ const char* configure_console() {
     // register_mpu6050();
     register_i2ctools();
     register_leds();
+    register_uart();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

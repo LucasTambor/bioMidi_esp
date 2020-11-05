@@ -72,6 +72,10 @@ Touch
 https://diyi0t.com/i2s-sound-tutorial-for-esp32/
 https://diyi0t.com/reduce-the-esp32-power-consumption/
 
+https://www.youtube.com/watch?v=QREKVWaZLi4
+https://github.com/ikostoski/esp32-i2s-slm
+
+https://github.com/fakufaku/esp32-fft
 # Libs
 
 * BLE - MIDI
