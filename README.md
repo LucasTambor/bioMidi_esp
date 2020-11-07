@@ -52,6 +52,7 @@ https://www.novelbits.io/bluetooth-gatt-services-characteristics/
 ## Dispositivo
 
 Led RGB para representar
+* WS
 * Conectado para configuração
 * Nivel de bateria
 
@@ -76,6 +77,7 @@ https://www.youtube.com/watch?v=QREKVWaZLi4
 https://github.com/ikostoski/esp32-i2s-slm
 
 https://github.com/fakufaku/esp32-fft
+
 # Libs
 
 * BLE - MIDI

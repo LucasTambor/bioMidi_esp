@@ -7,16 +7,6 @@ static const char *TAG = "UART_App";
 
 QueueHandle_t xQueueUartWriteBuffer;
 
-// typedef struct{
-//     int accel_x;
-//     int accel_y;
-//     int accel_z;
-//     int gyr_x;
-//     int gyr_y;
-//     int gyr_z;
-//     int mic;
-//     int fft;
-// }data_stream_t;
 typedef struct {
     double data[UART_DATA_ID_MAX];
 }data_stream_t;

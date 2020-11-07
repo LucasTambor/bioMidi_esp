@@ -20,6 +20,7 @@
 #include "i2c_driver.h"
 #include "led_app.h"
 #include "uart_app.h"
+#include "touch_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -49,6 +50,7 @@ TaskHandle_t xTaskI2CReadHandle;
 TaskHandle_t xTaskI2CWriteHandle;
 TaskHandle_t xTaskLedControlHandle;
 TaskHandle_t xTaskUartHandle;
+TaskHandle_t xTaskTouchHandle;
 
 //**********************************************************************************************************
 
@@ -132,6 +134,15 @@ void app_main(void)
                             NULL,
                             osPriorityHigh,
                             &xTaskUartHandle,
+                            APP_CPU_NUM
+                            );
+
+    xTaskCreatePinnedToCore(vTouchButton,
+                            "vTouchStream",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityNormal,
+                            &xTaskTouchHandle,
                             APP_CPU_NUM
                             );
 
