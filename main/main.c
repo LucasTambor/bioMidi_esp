@@ -21,6 +21,7 @@
 #include "led_app.h"
 #include "uart_app.h"
 #include "touch_app.h"
+#include "mic_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -130,16 +131,25 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(vDataStream,
                             "vDataStream",
-                            STACK_SIZE_2048,
+                            STACK_SIZE_2048 * 2,
                             NULL,
                             osPriorityHigh,
                             &xTaskUartHandle,
-                            APP_CPU_NUM
+                            0
                             );
 
     xTaskCreatePinnedToCore(vTouchButton,
                             "vTouchStream",
                             STACK_SIZE_2048,
+                            NULL,
+                            osPriorityNormal,
+                            &xTaskTouchHandle,
+                            APP_CPU_NUM
+                            );
+
+    xTaskCreatePinnedToCore(vMic,
+                            "vMic",
+                            STACK_SIZE_2048 * 4,
                             NULL,
                             osPriorityNormal,
                             &xTaskTouchHandle,

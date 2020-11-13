@@ -4,8 +4,8 @@
 #include <driver/uart.h>
 #include "driver/gpio.h"
 
-#define TX_PIN (GPIO_NUM_4)
-#define RX_PIN (GPIO_NUM_5)
+#define TX_PIN (GPIO_NUM_17)
+#define RX_PIN (GPIO_NUM_16)
 #define UART_BAUDRATE   115200
 
 static const int RX_BUF_SIZE = 128;

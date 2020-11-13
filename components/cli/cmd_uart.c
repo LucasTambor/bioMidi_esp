@@ -1,5 +1,6 @@
 
 #include "cmd_uart.h"
+#include "mic_app.h"
 #include "uart_app.h"
 #include <stdio.h>
 #include <string.h>
@@ -31,6 +32,9 @@ static int cmd_uart_write(int argc, char **argv)
         ESP_LOGE(TAG, "ID don't match DATA, id=%d | data=%d", id_size, data_size);
         return 1;
     }
+
+    // Set UART MODE to DATA Stream
+    uart_set_stream_mode(UART_MODE_DATA_STREAM);
 
     portBASE_TYPE xStatus;
     uart_data_t uart_data;
@@ -64,7 +68,55 @@ static void register_uart_write(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&uart_write_cmd));
 }
 
+static int cmd_uart_mic_stream(int argc, char **argv)
+{
+    (void) argc;
+    (void) argv;
+
+    // Set UART MODE to MIC Stream
+    uart_set_stream_mode(UART_MODE_MIC_STREAM);
+    mic_enable_data_stream();
+
+    return 0;
+}
+
+static void register_uart_mic_stream(void)
+{
+    const esp_console_cmd_t uart_mic_stream_cmd = {
+        .command = "uart_mic",
+        .help = "Enable MIC Stream",
+        .hint = NULL,
+        .func = &cmd_uart_mic_stream
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&uart_mic_stream_cmd));
+}
+
+static int cmd_uart_data_stream(int argc, char **argv)
+{
+    (void) argc;
+    (void) argv;
+
+    // Set UART MODE to MIC Stream
+    uart_set_stream_mode(UART_MODE_DATA_STREAM);
+    mic_disable_data_stream();
+
+    return 0;
+}
+
+static void register_uart_data_stream(void)
+{
+    const esp_console_cmd_t uart_data_stream_cmd = {
+        .command = "uart_data",
+        .help = "Enable Data Stream",
+        .hint = NULL,
+        .func = &cmd_uart_data_stream
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&uart_data_stream_cmd));
+}
+
 void register_uart(void)
 {
     register_uart_write();
+    register_uart_mic_stream();
+    register_uart_data_stream();
 }
