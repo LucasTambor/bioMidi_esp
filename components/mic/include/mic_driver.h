@@ -14,6 +14,7 @@
 #define I2S_SCK     26
 
 #define I2S_READ_BUFFER_SIZE    (1024)
+#define I2S_AUDIO_BUFFER_SIZE    (I2S_READ_BUFFER_SIZE/4)
 #define I2S_SAMPLE_RATE         8000
 
 esp_err_t mic_init();
