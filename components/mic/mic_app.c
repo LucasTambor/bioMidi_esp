@@ -11,13 +11,29 @@
 TaskHandle_t xTaskFFTHandle;
 
 SemaphoreHandle_t xMicDataStreamEnableMutex;
+SemaphoreHandle_t xMicFFTStreamEnableMutex;
 
 // Queue to send sound data to FFT
 static QueueHandle_t xQueueAudioData;
 
 //******************************************************************************************************************
-
+static bool mic_fft_stream = false;
 static const char *TAG_FFT = "FFT_TASK";
+void mic_enable_fft_stream() {
+    if(xSemaphoreTake(xMicFFTStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
+        mic_fft_stream = true;
+        ESP_LOGI(TAG_FFT, "Enable fft stream");
+        xSemaphoreGive(xMicFFTStreamEnableMutex);
+    }
+}
+
+void mic_disable_fft_stream() {
+    if(xSemaphoreTake(xMicFFTStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
+        mic_fft_stream = false;
+        ESP_LOGI(TAG_FFT, "Disable fft stream");
+        xSemaphoreGive(xMicFFTStreamEnableMutex);
+    }
+}
 typedef struct audio_data_s{
     int32_t * data;
     size_t len;
@@ -76,8 +92,27 @@ void vTaskFFT(void *pvParameters) {
                 }
             }
             float main_freq = ((float)I2S_SAMPLE_RATE / (float)I2S_AUDIO_BUFFER_SIZE) * max_index;
-            ESP_LOGI(TAG_FFT, "MAIN_FREQ: %2.2f - %2.2f | 31.5Hz: %2.2f | 63Hz: %2.2f | 94,5Hz: %2.2f | 126Hz: %2.2f | 257,5Hz: %2.2f ", main_freq, max, y1_cf[1], y1_cf[2], y1_cf[3], y1_cf[4], y1_cf[5]  );
+            // ESP_LOGI(TAG_FFT, "MAIN_FREQ: %2.2f - %2.2f | 31.5Hz: %2.2f | 63Hz: %2.2f | 94,5Hz: %2.2f | 126Hz: %2.2f | 257,5Hz: %2.2f ", main_freq, max, y1_cf[1], y1_cf[2], y1_cf[3], y1_cf[4], y1_cf[5]  );
 
+            // Send to FFT Stream
+            if(xSemaphoreTake(xMicFFTStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
+                if(mic_fft_stream) {
+                    freq_t freq_info[5] = {{.name="31.5", .value=y1_cf[1]},
+                                            {.name="63", .value=y1_cf[2]},
+                                            {.name="94,5", .value=y1_cf[3]},
+                                            {.name="126", .value=y1_cf[4]},
+                                            {.name="257,5", .value=y1_cf[5]}};
+                    uart_fft_data_t stream_data = {
+                        .freq = freq_info,
+                        .len = 5
+                    };
+
+                    if (xQueueSend( xQueueUartStreamFFTBuffer, (void *)&stream_data, portMAX_DELAY ) == pdFAIL) {
+                        ESP_LOGE(TAG_FFT, "ERROR sendig FFT data to queue");
+                    }
+                }
+            }
+            xSemaphoreGive(xMicFFTStreamEnableMutex);
 
 
             // ESP_LOGW(TAG_FFT, "Signal x1 in log scale");
@@ -117,6 +152,11 @@ void vMic( void *pvParameters ) {
 
     xMicDataStreamEnableMutex = xSemaphoreCreateMutex();
     if(xMicDataStreamEnableMutex == NULL) {
+        ESP_LOGE(TAG_MIC, "ERROR Creating Mutex");
+        return;
+    }
+    xMicFFTStreamEnableMutex = xSemaphoreCreateMutex();
+    if(xMicFFTStreamEnableMutex == NULL) {
         ESP_LOGE(TAG_MIC, "ERROR Creating Mutex");
         return;
     }

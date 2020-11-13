@@ -76,6 +76,7 @@ static int cmd_uart_mic_stream(int argc, char **argv)
     // Set UART MODE to MIC Stream
     uart_set_stream_mode(UART_MODE_MIC_STREAM);
     mic_enable_data_stream();
+    mic_disable_fft_stream();
 
     return 0;
 }
@@ -99,7 +100,7 @@ static int cmd_uart_data_stream(int argc, char **argv)
     // Set UART MODE to MIC Stream
     uart_set_stream_mode(UART_MODE_DATA_STREAM);
     mic_disable_data_stream();
-
+    mic_disable_fft_stream();
     return 0;
 }
 
@@ -114,9 +115,34 @@ static void register_uart_data_stream(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&uart_data_stream_cmd));
 }
 
+static int cmd_uart_fft_stream(int argc, char **argv)
+{
+    (void) argc;
+    (void) argv;
+
+    // Set UART MODE to MIC Stream
+    uart_set_stream_mode(UART_MODE_FFT_STREAM);
+    mic_disable_data_stream();
+    mic_enable_fft_stream();
+
+    return 0;
+}
+
+static void register_uart_fft_stream(void)
+{
+    const esp_console_cmd_t uart_fft_stream_cmd = {
+        .command = "uart_fft",
+        .help = "Enable FFT Stream",
+        .hint = NULL,
+        .func = &cmd_uart_fft_stream
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&uart_fft_stream_cmd));
+}
+
 void register_uart(void)
 {
     register_uart_write();
     register_uart_mic_stream();
     register_uart_data_stream();
+    register_uart_fft_stream();
 }

@@ -7,6 +7,7 @@
 
 extern QueueHandle_t xQueueUartWriteBuffer;
 extern QueueHandle_t xQueueUartStreamMicBuffer;
+extern QueueHandle_t xQueueUartStreamFFTBuffer;
 extern SemaphoreHandle_t xUartModeMutex;
 
 typedef enum {
@@ -22,8 +23,9 @@ typedef enum {
 }uart_data_id_e;
 
 typedef enum {
-    UART_MODE_DATA_STREAM,
+    UART_MODE_DATA_STREAM = 0,
     UART_MODE_MIC_STREAM,
+    UART_MODE_FFT_STREAM,
 }uart_mode_e;
 
 typedef struct UART_data_s
@@ -38,6 +40,17 @@ typedef struct UART_mic_data_s
     int32_t * data;        // Data value
     size_t len;            // Data lenght
 }uart_mic_data_t;
+
+typedef struct freq_s{
+    const char * name;
+    float value;
+}freq_t;
+
+typedef struct UART_mic_fft_s
+{
+    freq_t * freq;              // Freq info
+    size_t len;                 // Data lenght
+}uart_fft_data_t;
 
 void vDataStream( void *pvParameters );
 void uart_set_stream_mode(uart_mode_e new_mode);

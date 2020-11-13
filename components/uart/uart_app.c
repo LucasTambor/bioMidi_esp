@@ -7,6 +7,8 @@ static const char *TAG = "UART_App";
 
 QueueHandle_t xQueueUartWriteBuffer;
 QueueHandle_t xQueueUartStreamMicBuffer;
+QueueHandle_t xQueueUartStreamFFTBuffer;
+
 SemaphoreHandle_t xUartModeMutex;
 
 typedef struct {
@@ -20,7 +22,7 @@ static uart_mode_e mode = UART_MODE_DATA_STREAM;
 void uart_set_stream_mode(uart_mode_e new_mode) {
     if(xSemaphoreTake(xUartModeMutex, portMAX_DELAY) == pdTRUE) {
         mode = new_mode;
-        ESP_LOGI(TAG, "New Mode: %s", mode ? "MIC Stream" : "DATA Stream");
+        ESP_LOGI(TAG, "New Mode: %d", mode);
         xSemaphoreGive(xUartModeMutex);
     }
     // Clear Plotter
@@ -32,10 +34,12 @@ void uart_set_stream_mode(uart_mode_e new_mode) {
 void vDataStream( void *pvParameters ) {
     uart_data_t lReceivedValue;
     uart_mic_data_t lReceivedMicValue;
+    uart_fft_data_t lReceivedFFTValue;
 
     // Init Queue
     xQueueUartWriteBuffer = xQueueCreate(16, sizeof(uart_data_t));
     xQueueUartStreamMicBuffer = xQueueCreate(16, sizeof(uart_data_t));
+    xQueueUartStreamFFTBuffer = xQueueCreate(16, sizeof(uart_data_t));
     xUartModeMutex = xSemaphoreCreateMutex();
     if(xUartModeMutex == NULL) {
         ESP_LOGE(TAG, "ERROR Creating Mutex");
@@ -84,26 +88,33 @@ void vDataStream( void *pvParameters ) {
             break;
             case UART_MODE_MIC_STREAM:
                 if( xQueueReceive( xQueueUartStreamMicBuffer, (void *)&lReceivedMicValue, portMAX_DELAY ) == pdPASS ) {
-                    ESP_LOGI(TAG, "Received %d values from MIC", lReceivedMicValue.len);
+                    ESP_LOGD(TAG, "Received %d values from MIC", lReceivedMicValue.len);
                     if(lReceivedMicValue.len) {
-                            // vTaskDelay( 10/ portTICK_RATE_MS );
                         for(uint32_t i = 0; i<lReceivedMicValue.len; i++) {
-                            // printf("%d\n", lReceivedMicValue.data[i]);
-                            // if(lReceivedMicValue.data[i] > 50000) {
-                            //     ESP_LOGE(TAG,"MAIOR: %d | %d", i, lReceivedMicValue.data[i]);
-                            //     lReceivedMicValue.data[i] = 0;
-                            // }
-                            // if(lReceivedMicValue.data[i] < -50000){
-                            //     ESP_LOGE(TAG,"MENOR: %d | %d", i, lReceivedMicValue.data[i]);
-                            //     lReceivedMicValue.data[i] = 0;
-                            // }
                             sprintf(data_buffer, "MIN:-100000,MAX:100000,MIC:%d\n", lReceivedMicValue.data[i]);
                             if(!uart_write(data_buffer, strlen(data_buffer))) {
                                 ESP_LOGE(TAG, "ERROR WRITING DATA");
                                 break;
                             }
-                            // vTaskDelay( 10/ portTICK_RATE_MS );
                         }
+                    }
+                }
+            break;
+            case UART_MODE_FFT_STREAM:
+                if( xQueueReceive( xQueueUartStreamFFTBuffer, (void *)&lReceivedFFTValue, portMAX_DELAY ) == pdPASS ) {
+                    ESP_LOGD(TAG, "Received %d values from FFT", lReceivedFFTValue.len);
+
+                    if(lReceivedFFTValue.len) {
+                        sprintf(data_buffer, "31.5Hz:%2.2f,63Hz:%2.2f,94.5Hz:%2.2f,126Hz:%2.2f,257.5Hz:%2.2f\n",
+                        lReceivedFFTValue.freq[0].value,
+                        lReceivedFFTValue.freq[1].value,
+                        lReceivedFFTValue.freq[2].value,
+                        lReceivedFFTValue.freq[3].value,
+                        lReceivedFFTValue.freq[4].value);
+
+                        if(!uart_write(data_buffer, strlen(data_buffer))) {
+                            ESP_LOGE(TAG, "ERROR WRITING DATA");
+                            }
                     }
                 }
             break;
