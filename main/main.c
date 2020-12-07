@@ -22,6 +22,7 @@
 #include "uart_app.h"
 #include "touch_app.h"
 #include "mic_app.h"
+#include "bmp280_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -52,6 +53,8 @@ TaskHandle_t xTaskI2CWriteHandle;
 TaskHandle_t xTaskLedControlHandle;
 TaskHandle_t xTaskUartHandle;
 TaskHandle_t xTaskTouchHandle;
+TaskHandle_t xTaskMicHandle;
+TaskHandle_t xTaskBMPHandle;
 
 //**********************************************************************************************************
 
@@ -152,7 +155,16 @@ void app_main(void)
                             STACK_SIZE_2048 * 4,
                             NULL,
                             osPriorityNormal,
-                            &xTaskTouchHandle,
+                            &xTaskMicHandle,
+                            APP_CPU_NUM
+                            );
+
+    xTaskCreatePinnedToCore(vBMP280Task,
+                            "vBMP280Task",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityNormal,
+                            &xTaskBMPHandle,
                             APP_CPU_NUM
                             );
 
