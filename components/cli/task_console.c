@@ -85,6 +85,7 @@ const char* configure_console() {
     register_i2ctools();
     register_leds();
     register_uart();
+    register_bmp280();
 
     /* Prompt to be printed before each line.
      * This can be customized, made dynamic, etc.

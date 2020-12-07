@@ -11,6 +11,7 @@ extern "C" {
 #include "cmd_i2ctools.h"
 #include "cmd_led.h"
 #include "cmd_uart.h"
+#include "cmd_bmp.h"
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"

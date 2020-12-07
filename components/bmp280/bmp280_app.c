@@ -3,26 +3,49 @@
 #include "esp_log.h"
 
 static const char *TAG = "BMP280_App";
+SemaphoreHandle_t xBMP280DataMutex;
 
+static bmp280_data_t bmp_data;
 
 void vBMP280Task( void *pvParameters ) {
-    float temperature = 0;
-    float pressure = 0;
     bmp280_params_t params;
     BMP280_compensation_t comp;
 
-    bmp280_init_default_params(&params);
-    if(bmp280_init(&params, &comp) == ESP_OK) {
-        ESP_LOGI(TAG, "Initialize BMP280");
+    xBMP280DataMutex = xSemaphoreCreateMutex();
+    if(xBMP280DataMutex == NULL) {
+        ESP_LOGE(TAG, "ERROR Creating Mutex");
+        return;
     }
+
+    bmp280_init_default_params(&params);
+    if(bmp280_init(&params, &comp) != ESP_OK) {
+        ESP_LOGI(TAG, " Error Initialize BMP280");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Initialize BMP280");
 
 
     while(1) {
-        ESP_ERROR_CHECK(bmp280_read_data(&comp, &temperature, &pressure));
-
-        ESP_LOGI(TAG, "Temperature: %.2f | Pressure: %.2f", temperature, pressure);
+        if(xSemaphoreTake(xBMP280DataMutex, portMAX_DELAY) == pdTRUE) {
+            ESP_ERROR_CHECK(bmp280_read_data(&comp, &bmp_data.temperature, &bmp_data.pressure));
+            xSemaphoreGive(xBMP280DataMutex);
+        }
 
         vTaskDelay(pdMS_TO_TICKS(1000));
 
     }
+}
+
+esp_err_t bmp280_app_read_data(bmp280_data_t * data) {
+    if(xSemaphoreTake(xBMP280DataMutex, portMAX_DELAY) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
+
+    data->temperature = bmp_data.temperature;
+    data->pressure = bmp_data.pressure;
+
+    xSemaphoreGive(xBMP280DataMutex);
+
+    return ESP_OK;
 }
