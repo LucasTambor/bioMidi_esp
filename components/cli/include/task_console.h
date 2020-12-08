@@ -12,6 +12,7 @@ extern "C" {
 #include "cmd_led.h"
 #include "cmd_uart.h"
 #include "cmd_bmp.h"
+#include "cmd_mpu6050.h"
 
 #define MOUNT_PATH "/data"
 #define HISTORY_PATH MOUNT_PATH "/history.txt"

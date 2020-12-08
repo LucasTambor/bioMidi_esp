@@ -82,3 +82,7 @@ https://github.com/fakufaku/esp32-fft
 
 * BLE - MIDI
 https://github.com/lathoub/Arduino-BLE-MIDI
+
+# Issues
+
+* i2c_master_cmd_begin() in i2c_read_bytes() Timeout de vez em quando

@@ -8,6 +8,7 @@ SemaphoreHandle_t xBMP280DataMutex;
 static bmp280_data_t bmp_data;
 
 void vBMP280Task( void *pvParameters ) {
+    esp_err_t err = ESP_OK;
     bmp280_params_t params;
     BMP280_compensation_t comp;
 
@@ -28,7 +29,10 @@ void vBMP280Task( void *pvParameters ) {
 
     while(1) {
         if(xSemaphoreTake(xBMP280DataMutex, portMAX_DELAY) == pdTRUE) {
-            ESP_ERROR_CHECK(bmp280_read_data(&comp, &bmp_data.temperature, &bmp_data.pressure));
+            err = bmp280_read_data(&comp, &bmp_data.temperature, &bmp_data.pressure);
+            if(err != ESP_OK) {
+                ESP_LOGE(TAG, "ERROR: %s", esp_err_to_name(err));
+            }
             xSemaphoreGive(xBMP280DataMutex);
         }
 

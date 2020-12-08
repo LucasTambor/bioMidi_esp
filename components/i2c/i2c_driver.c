@@ -30,6 +30,8 @@
 #define ACK_VAL    						0x0         /*!< I2C ack value */
 #define NACK_VAL   						0x1         /*!< I2C nack value */
 
+static const char *TAG = "i2c_driver";
+
 void i2c_init() {
 	int i2c_master_port = I2C_MASTER_NUM;
 	i2c_config_t conf;
@@ -65,6 +67,7 @@ int8_t i2c_read_bytes
 	uint8_t* data
 )
 {
+	esp_err_t err = ESP_OK;
 	select_register(device_address, register_address);
 	i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 	ESP_ERROR_CHECK(i2c_master_start(cmd));
@@ -76,7 +79,10 @@ int8_t i2c_read_bytes
 	ESP_ERROR_CHECK(i2c_master_read_byte(cmd, data + size - 1, 1));
 
 	ESP_ERROR_CHECK(i2c_master_stop(cmd));
-	ESP_ERROR_CHECK(i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_PERIOD_MS));
+	err = i2c_master_cmd_begin(I2C_MASTER_NUM, cmd, 1000 / portTICK_PERIOD_MS);
+	if(err != ESP_OK) {
+		ESP_LOGE(TAG, "ERROR: %s", esp_err_to_name(err));
+	}
 	i2c_cmd_link_delete(cmd);
 
 	return (size);

@@ -23,6 +23,7 @@
 #include "touch_app.h"
 #include "mic_app.h"
 #include "bmp280_app.h"
+#include "mpu6050_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -55,6 +56,7 @@ TaskHandle_t xTaskUartHandle;
 TaskHandle_t xTaskTouchHandle;
 TaskHandle_t xTaskMicHandle;
 TaskHandle_t xTaskBMPHandle;
+TaskHandle_t xTaskMPUHandle;
 
 //**********************************************************************************************************
 
@@ -107,7 +109,7 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(vI2CWrite,
                             "vI2CWrite",
-                            STACK_SIZE_2048,
+                            STACK_SIZE_2048 * 2,
                             NULL,
                             osPriorityHigh,
                             &xTaskI2CWriteHandle,
@@ -116,13 +118,21 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(vI2CRead,
                             "vI2CRead",
-                            STACK_SIZE_2048,
+                            STACK_SIZE_2048 * 2,
                             NULL,
                             osPriorityHigh,
                             &xTaskI2CReadHandle,
                             APP_CPU_NUM
                             );
 
+    xTaskCreatePinnedToCore(vMPU6050Task,
+                            "vMPU6050Task",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityNormal,
+                            &xTaskMPUHandle,
+                            0
+                            );
     xTaskCreatePinnedToCore(vLedControlTask,
                             "vLedControlTask",
                             STACK_SIZE_2048,
@@ -161,12 +171,13 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(vBMP280Task,
                             "vBMP280Task",
-                            STACK_SIZE_2048,
+                            STACK_SIZE_2048 * 2,
                             NULL,
                             osPriorityNormal,
                             &xTaskBMPHandle,
                             APP_CPU_NUM
                             );
+
 
 
     while(1) {
