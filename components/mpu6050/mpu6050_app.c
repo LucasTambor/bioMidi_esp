@@ -1,11 +1,65 @@
 #include "mpu6050_app.h"
 #include "mpu6050_driver.h"
+#include "uart_app.h"
 #include "esp_log.h"
 
 static const char *TAG = "MPU6050_App";
 SemaphoreHandle_t xMPU6050DataMutex;
 
 static mpu6050_data_t mpu6050_data;
+
+static void mpu6050_data_stream() {
+    uart_data_t uart_data_accel_x = {
+        .id = UART_DATA_ID_ACCEL_X,
+        .data = mpu6050_data.accel_x
+    };
+    if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_accel_x, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return;
+    }
+
+    uart_data_t uart_data_accel_y = {
+        .id = UART_DATA_ID_ACCEL_Y,
+        .data = mpu6050_data.accel_y
+    };
+    if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_accel_y, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return;
+    }
+    uart_data_t uart_data_accel_z = {
+        .id = UART_DATA_ID_ACCEL_Z,
+        .data = mpu6050_data.accel_z
+    };
+    if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_accel_z, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return;
+    }
+    uart_data_t uart_data_gyr_x = {
+        .id = UART_DATA_ID_GYR_X,
+        .data = mpu6050_data.gyr_x
+    };
+    if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_gyr_x, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return;
+    }
+    uart_data_t uart_data_gyr_y = {
+        .id = UART_DATA_ID_GYR_Y,
+        .data = mpu6050_data.gyr_y
+    };
+    if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_gyr_y, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return;
+    }
+    uart_data_t uart_data_gyr_z = {
+        .id = UART_DATA_ID_GYR_Z,
+        .data = mpu6050_data.gyr_z
+    };
+    if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_gyr_z, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return;
+    }
+
+}
 
 void vMPU6050Task( void *pvParameters ) {
     esp_err_t err = ESP_OK;
@@ -42,6 +96,8 @@ void vMPU6050Task( void *pvParameters ) {
             mpu6050_data.temperature = temp_data;
             xSemaphoreGive(xMPU6050DataMutex);
         }
+
+        mpu6050_data_stream();
 
         vTaskDelay(pdMS_TO_TICKS(200));
     }
