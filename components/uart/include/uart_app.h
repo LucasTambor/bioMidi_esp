@@ -18,7 +18,7 @@ typedef enum {
     UART_DATA_ID_GYR_Y,
     UART_DATA_ID_GYR_Z,
     UART_DATA_ID_MIC,
-    UART_DATA_ID_FFT,
+    UART_DATA_ID_HEART_RATE,
     UART_DATA_ID_MAX
 }uart_data_id_e;
 

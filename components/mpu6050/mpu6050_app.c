@@ -97,7 +97,7 @@ void vMPU6050Task( void *pvParameters ) {
             xSemaphoreGive(xMPU6050DataMutex);
         }
 
-        mpu6050_data_stream();
+        // mpu6050_data_stream();
 
         vTaskDelay(pdMS_TO_TICKS(200));
     }

@@ -24,6 +24,7 @@
 #include "mic_app.h"
 #include "bmp280_app.h"
 #include "mpu6050_app.h"
+#include "hr_app.h"
 
 #define STACK_SIZE_2048 2048
 
@@ -57,6 +58,7 @@ TaskHandle_t xTaskTouchHandle;
 TaskHandle_t xTaskMicHandle;
 TaskHandle_t xTaskBMPHandle;
 TaskHandle_t xTaskMPUHandle;
+TaskHandle_t xTaskHeartRateHandle;
 
 //**********************************************************************************************************
 
@@ -175,6 +177,15 @@ void app_main(void)
                             NULL,
                             osPriorityNormal,
                             &xTaskBMPHandle,
+                            APP_CPU_NUM
+                            );
+
+    xTaskCreatePinnedToCore(vHeartRateTask,
+                            "vHeartRateTask",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityNormal,
+                            &xTaskHeartRateHandle,
                             APP_CPU_NUM
                             );
 

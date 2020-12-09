@@ -68,7 +68,7 @@ void vDataStream( void *pvParameters ) {
                 if(send_data) {
                     sprintf(data_buffer, "Accel_x:%2.2f,Accel_y:%2.2f,Accel_z:%2.2f,    \
                                         Gyro_x:%2.2f,Gyro_y:%2.2f,Gyro_z:%2.2f,         \
-                                        MIC:%2.2f,FFT:%2.2f\n",
+                                        MIC:%2.2f,HR:%2.2f\n",
                                         data_packet.data[UART_DATA_ID_ACCEL_X],
                                         data_packet.data[UART_DATA_ID_ACCEL_Y],
                                         data_packet.data[UART_DATA_ID_ACCEL_Z],
@@ -76,7 +76,7 @@ void vDataStream( void *pvParameters ) {
                                         data_packet.data[UART_DATA_ID_GYR_Y],
                                         data_packet.data[UART_DATA_ID_GYR_Z],
                                         data_packet.data[UART_DATA_ID_MIC],
-                                        data_packet.data[UART_DATA_ID_FFT]);
+                                        data_packet.data[UART_DATA_ID_HEART_RATE]);
 
                     if(!uart_write(data_buffer, strlen(data_buffer))) {
                         ESP_LOGE(TAG, "ERROR WRITING DATA");
