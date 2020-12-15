@@ -79,7 +79,6 @@ const char* configure_console() {
     /* Register commands */
     esp_console_register_help_command();
     register_system();
-    register_wifi();
     register_nvs();
     // register_mpu6050();
     register_i2ctools();

@@ -14,8 +14,6 @@
 #include "nvs_flash.h"
 
 #include "task_console.h"
-// #include "task_mpu6050.h"
-// #include "mpu6050_application.h"
 #include "i2c_app.h"
 #include "i2c_driver.h"
 #include "led_app.h"
@@ -135,6 +133,7 @@ void app_main(void)
                             &xTaskMPUHandle,
                             0
                             );
+
     xTaskCreatePinnedToCore(vLedControlTask,
                             "vLedControlTask",
                             STACK_SIZE_2048,

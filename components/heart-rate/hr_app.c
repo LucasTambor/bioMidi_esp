@@ -11,7 +11,7 @@ static uint16_t heart_rate_data;
 static void heart_rate_data_stream() {
     uart_data_t uart_data_heart_rate = {
         .id = UART_DATA_ID_HEART_RATE,
-        .data = (double)heart_rate_data 
+        .data = (double)heart_rate_data
     };
     if (xQueueSend( xQueueUartWriteBuffer, (void *)&uart_data_heart_rate, portMAX_DELAY ) == pdFAIL) {
         ESP_LOGE(TAG, "ERROR sendig data to queue");
@@ -38,7 +38,6 @@ void vHeartRateTask( void *pvParameters ) {
 
     while(1) {
         err = heart_rate_read(&heart_rate_data);
-        // ESP_LOGI(TAG, "%d\n",heart_rate_data);
 
         heart_rate_data_stream();
 

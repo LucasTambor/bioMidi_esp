@@ -5,7 +5,6 @@ extern "C" {
 #endif
 
 #include "cmd_system.h"
-#include "cmd_wifi.h"
 #include "cmd_nvs.h"
 // #include "cmd_mpu6050.h"
 #include "cmd_i2ctools.h"
