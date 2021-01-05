@@ -11,6 +11,10 @@
 #include "DStrip.h"
 #include "DLEDController.h"
 
+#include "common.h"
+
+//****************************************************************************************************************
+
 #define LED_CTR_QUEUE_SIZE  1
 #define LED_CTR_CYCLE_MS    20
 const char* TAG = "LED_Control";
@@ -29,6 +33,8 @@ SemaphoreHandle_t xBinarySemaphoreLed;
 TimerHandle_t xTimerLed;
 
 static LED_Status actual_led = {0, LED_OFF, 0, 0 , 0, 0};
+
+//****************************************************************************************************************
 
 extern "C" {
     static void vLedTimerCallback(TimerHandle_t pxTimer) {
@@ -56,6 +62,7 @@ extern "C" {
                 break;
         }
     }
+
     void vLedControlTask(void *taskParameter) {
         LED_Status lReceivedValue;
 	    portBASE_TYPE xStatus;
@@ -70,6 +77,10 @@ extern "C" {
         rmtChannel.ConfigureForWS2812x();
         LEDcontroller.SetLEDType(LEDType::WS2812B);
 
+        // Signalize task successfully creation
+        xEventGroupSetBits(xEventGroupTasks, BIT_TASK_LED_CONTROL);
+        ESP_LOGI(TAG, "LED Control Initialized");
+        
         bool rainbow_status = true;
         uint16_t rainbow_step = 0;
         while(1) {

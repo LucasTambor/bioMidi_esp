@@ -2,6 +2,7 @@
 #include "uart_driver.h"
 #include "esp_log.h"
 #include <string.h>
+#include "common.h"
 
 static const char *TAG = "UART_App";
 
@@ -46,9 +47,21 @@ void vDataStream( void *pvParameters ) {
         return;
     }
 
+    // Wait for tasks
+    xEventGroupWaitBits(xEventGroupTasks,
+                        BIT_TASK_MPU6050 | BIT_TASK_MIC | BIT_TASK_BMP280 | BIT_TASK_HEART_RATE,
+                        pdFALSE,
+                        pdTRUE,
+                        portMAX_DELAY);
 
     // Init UART
     ESP_ERROR_CHECK(uart_init());
+
+	// Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_DATA_STREAM);
+    ESP_LOGI(TAG, "Data Stream Initialized");
+
+
     char data_buffer[256] = {0};
     data_stream_t data_packet;
     memset(&data_packet, 0, sizeof(data_stream_t));

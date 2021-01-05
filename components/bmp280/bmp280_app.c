@@ -1,6 +1,7 @@
 #include "bmp280_app.h"
 #include "bmp280_driver.h"
 #include "esp_log.h"
+#include "common.h"
 
 static const char *TAG = "BMP280_App";
 SemaphoreHandle_t xBMP280DataMutex;
@@ -18,13 +19,22 @@ void vBMP280Task( void *pvParameters ) {
         return;
     }
 
+    // Wait for I2C tasks
+    xEventGroupWaitBits(xEventGroupTasks,
+                        BIT_TASK_I2C_READ | BIT_TASK_I2C_WRITE,
+                        pdFALSE,
+                        pdTRUE,
+                        portMAX_DELAY);
+
     bmp280_init_default_params(&params);
     if(bmp280_init(&params, &comp) != ESP_OK) {
         ESP_LOGI(TAG, " Error Initialize BMP280");
         return;
     }
 
-    ESP_LOGI(TAG, "Initialize BMP280");
+	// Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_BMP280);
+    ESP_LOGI(TAG, "BMP280 Initialized");
 
 
     while(1) {

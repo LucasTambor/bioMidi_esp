@@ -2,6 +2,7 @@
 #include "hr_driver.h"
 #include "uart_app.h"
 #include "esp_log.h"
+#include "common.h"
 
 static const char *TAG = "HEART_RATE_App";
 SemaphoreHandle_t xHeartRateDataMutex;
@@ -34,7 +35,9 @@ void vHeartRateTask( void *pvParameters ) {
         return;
     }
 
-    ESP_LOGI(TAG, "Initialize Heart Rate");
+	// Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_HEART_RATE);
+    ESP_LOGI(TAG, "Heart Rate Initialized");
 
     while(1) {
         err = heart_rate_read(&heart_rate_data);

@@ -2,11 +2,16 @@
 #include "mpu6050_driver.h"
 #include "uart_app.h"
 #include "esp_log.h"
+#include "common.h"
+
+//****************************************************************************************************************
 
 static const char *TAG = "MPU6050_App";
 SemaphoreHandle_t xMPU6050DataMutex;
 
 static mpu6050_data_t mpu6050_data;
+
+//****************************************************************************************************************
 
 static void mpu6050_data_stream() {
     uart_data_t uart_data_accel_x = {
@@ -69,7 +74,14 @@ void vMPU6050Task( void *pvParameters ) {
         ESP_LOGE(TAG, "ERROR Creating Mutex");
         return;
     }
-    // vTaskDelay(pdMS_TO_TICKS(2000));
+
+    // Wait for I2C tasks
+    xEventGroupWaitBits(xEventGroupTasks,
+                        BIT_TASK_I2C_READ | BIT_TASK_I2C_WRITE,
+                        pdFALSE,
+                        pdTRUE,
+                        portMAX_DELAY);
+
 
     err = mpu6050_init();
     if(err != ESP_OK) {
@@ -77,7 +89,9 @@ void vMPU6050Task( void *pvParameters ) {
         return;
     }
 
-    ESP_LOGI(TAG, "Initialize MPU6050");
+	// Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_MPU6050);
+    ESP_LOGI(TAG, "MPU6050 Initialized");
 
     mpu6050_gyr_data_t gyr_data;
     mpu6050_accel_data_t accel_data;

@@ -12,7 +12,7 @@
 #include "i2c_app.h"
 #include "i2c_driver.h"
 #include <esp_log.h>
-
+#include "common.h"
 
 #define I2C_APP_QUEUE_LENGTH            1
 #define I2C_APP_WRITE_ITEM_SIZE         sizeof( I2C_Status )
@@ -66,6 +66,10 @@ void vI2CWrite( void *pvParameters )
 			was started so before this task ran for the first time.*/
 		xSemaphoreTake( xBinarySemaphoreI2CAppEndOfWrite, 0 );
 	}
+
+	// Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_I2C_WRITE);
+	ESP_LOGI(TAG, "I2C Write Initialized");
 
 	for(;;)
 	{
@@ -132,6 +136,10 @@ void vI2CRead( void *pvParameters )
 			was started so before this task ran for the first time.*/
 		xSemaphoreTake( xBinarySemaphoreI2CAppEndOfRead, 0 );
 	}
+
+	// Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_I2C_READ);
+	ESP_LOGI(TAG, "I2C Read Initialized");
 
 	for(;;)
 	{

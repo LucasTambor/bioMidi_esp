@@ -5,6 +5,7 @@
 #include "string.h"
 #include "esp_dsp.h"
 #include <math.h>
+#include "common.h"
 
 //******************************************************************************************************************
 
@@ -126,12 +127,12 @@ void vTaskFFT(void *pvParameters) {
 //******************************************************************************************************************
 
 static bool mic_data_stream = false;
-static const char *TAG_MIC = "MIC_TASK";
+static const char *TAG = "MIC_TASK";
 
 void mic_enable_data_stream() {
     if(xSemaphoreTake(xMicDataStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
         mic_data_stream = true;
-        ESP_LOGI(TAG_MIC, "Enable data stream");
+        ESP_LOGI(TAG, "Enable data stream");
         xSemaphoreGive(xMicDataStreamEnableMutex);
     }
 }
@@ -139,25 +140,25 @@ void mic_enable_data_stream() {
 void mic_disable_data_stream() {
     if(xSemaphoreTake(xMicDataStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
         mic_data_stream = false;
-        ESP_LOGI(TAG_MIC, "Disable data stream");
+        ESP_LOGI(TAG, "Disable data stream");
         xSemaphoreGive(xMicDataStreamEnableMutex);
     }
 }
 
 void vMic( void *pvParameters ) {
     if(mic_init() != ESP_OK) {
-        ESP_LOGE(TAG_MIC, "ERROR Initializing Mic Driver");
+        ESP_LOGE(TAG, "ERROR Initializing Mic Driver");
         return;
     }
 
     xMicDataStreamEnableMutex = xSemaphoreCreateMutex();
     if(xMicDataStreamEnableMutex == NULL) {
-        ESP_LOGE(TAG_MIC, "ERROR Creating Mutex");
+        ESP_LOGE(TAG, "ERROR Creating Mutex");
         return;
     }
     xMicFFTStreamEnableMutex = xSemaphoreCreateMutex();
     if(xMicFFTStreamEnableMutex == NULL) {
-        ESP_LOGE(TAG_MIC, "ERROR Creating Mutex");
+        ESP_LOGE(TAG, "ERROR Creating Mutex");
         return;
     }
 
@@ -188,6 +189,11 @@ void vMic( void *pvParameters ) {
     };
     i2s_event_t evt;
     size_t bytes_read;
+
+    // Signalize task successfully creation
+	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_MIC);
+    ESP_LOGI(TAG, "Mic Initialized");
+
     while(1) {
         // Wait for I2S event
         if (xQueueReceive(xQueueI2S, &evt, portMAX_DELAY) == pdPASS)
@@ -208,7 +214,7 @@ void vMic( void *pvParameters ) {
                     stream_data.len = bytes_read/4;
 
                     if (xQueueSend( xQueueAudioData, (void *)&audio_data, portMAX_DELAY ) == pdFAIL) {
-                        ESP_LOGE(TAG_MIC, "ERROR sending audio data to FFT");
+                        ESP_LOGE(TAG, "ERROR sending audio data to FFT");
                     }
 
                     // Send to Data Stream
@@ -217,7 +223,7 @@ void vMic( void *pvParameters ) {
                             stream_data.data = samples_32;
                             stream_data.len = bytes_read/4;
                             if (xQueueSend( xQueueUartStreamMicBuffer, (void *)&stream_data, portMAX_DELAY ) == pdFAIL) {
-                                ESP_LOGE(TAG_MIC, "ERROR sendig mic data to queue");
+                                ESP_LOGE(TAG, "ERROR sendig mic data to queue");
                             }
                         }
                     }

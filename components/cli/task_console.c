@@ -10,6 +10,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_vfs_dev.h"
+#include "common.h"
 
 //**********************************************************************************************************
 
@@ -17,7 +18,12 @@ static const char *TAG = "Task Console";
 
 static void initialize_console(void)
 {
-    ESP_LOGI(TAG, "initialize_console");
+    // Wait for all tasks
+    xEventGroupWaitBits(xEventGroupTasks,
+                        BIT_TASK_I2C_READ | BIT_TASK_I2C_WRITE | BIT_TASK_MPU6050 | BIT_TASK_LED_CONTROL | BIT_TASK_DATA_STREAM | BIT_TASK_MIC | BIT_TASK_BMP280 | BIT_TASK_HEART_RATE,
+                        pdFALSE,
+                        pdTRUE,
+                        portMAX_DELAY);
     /* Drain stdout before reconfiguring it */
     fflush(stdout);
     fsync(fileno(stdout));
@@ -71,6 +77,9 @@ static void initialize_console(void)
 
     /* Load command history from filesystem */
     linenoiseHistoryLoad(HISTORY_PATH);
+
+
+    ESP_LOGI(TAG, "Console Initialized");
 }
 
 const char* configure_console() {

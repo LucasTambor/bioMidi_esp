@@ -13,6 +13,7 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 
+#include "common.h"
 #include "task_console.h"
 #include "i2c_app.h"
 #include "i2c_driver.h"
@@ -59,9 +60,12 @@ TaskHandle_t xTaskMPUHandle;
 TaskHandle_t xTaskHeartRateHandle;
 
 //**********************************************************************************************************
+// Event Groups
+EventGroupHandle_t xEventGroupTasks;
+
+//**********************************************************************************************************
 
 static void initialize_filesystem(void) {
-    ESP_LOGI(TAG, "initialize_filesystem");
 
     static wl_handle_t wl_handle;
     const esp_vfs_fat_mount_config_t mount_config = {
@@ -73,12 +77,12 @@ static void initialize_filesystem(void) {
         ESP_LOGE(TAG, "Failed to mount FATFS (%s)", esp_err_to_name(err));
         return;
     }
+    ESP_LOGI(TAG, "Filesystem Initialized");
 }
 
 //**********************************************************************************************************
 
 static void initialize_nvs(void) {
-    ESP_LOGI(TAG, "initialize_nvs");
 
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -86,6 +90,7 @@ static void initialize_nvs(void) {
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
+    ESP_LOGI(TAG, "NVS Initialized");
 }
 
 //**********************************************************************************************************
@@ -98,15 +103,13 @@ void app_main(void)
 
     i2c_init();
 
-    //Core 1
-    xTaskCreatePinnedToCore(vTaskConsole,                           /* Function that implements the task. */
-                            "TaskConsole",                          /* Text name for the task. */
-                            configMINIMAL_STACK_SIZE + 10000,       /* Number of indexes in the xStack array. */
-                            NULL,                                   /* Parameter passed into the task. */
-                            osPriorityNormal,                       /* Priority at which the task is created. */
-                            &xTaskConsoleHandle,                    /* Variable to hold the task's data structure. */
-                            APP_CPU_NUM);                           /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+    // Initialize tasks event group
+    xEventGroupTasks = xEventGroupCreate();
+    if(xEventGroupTasks == NULL) {
+        ESP_LOGE(TAG, "ERROR Creating xEventGroupTasks");
+    }
 
+    //Core 1
     xTaskCreatePinnedToCore(vI2CWrite,
                             "vI2CWrite",
                             STACK_SIZE_2048 * 2,
@@ -124,6 +127,15 @@ void app_main(void)
                             &xTaskI2CReadHandle,
                             APP_CPU_NUM
                             );
+
+    xTaskCreatePinnedToCore(vTaskConsole,                           /* Function that implements the task. */
+                            "TaskConsole",                          /* Text name for the task. */
+                            configMINIMAL_STACK_SIZE + 10000,       /* Number of indexes in the xStack array. */
+                            NULL,                                   /* Parameter passed into the task. */
+                            osPriorityNormal,                       /* Priority at which the task is created. */
+                            &xTaskConsoleHandle,                    /* Variable to hold the task's data structure. */
+                            APP_CPU_NUM);                           /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
+
 
     xTaskCreatePinnedToCore(vMPU6050Task,
                             "vMPU6050Task",
