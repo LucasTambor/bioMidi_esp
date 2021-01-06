@@ -64,7 +64,7 @@ extern "C" {
  *         API see blemidi_receive_packet_callback_for_debugging
  *         Specify NULL if no callback required in your application.
  */
-extern int32_t blemidi_init(void *callback_midi_message_received);
+extern int32_t blemidi_init(void *callback_midi_message_received, void *_callback_midi_on_connect, void *_callback_midi_on_disconnect);
 
 /**
  * @brief Sends a BLE MIDI message

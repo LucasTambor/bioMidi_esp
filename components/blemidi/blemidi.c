@@ -191,6 +191,8 @@ static const uint8_t char_value[3]                 = {0x80, 0x80, 0xfe};
 static const uint8_t blemidi_ccc[2]                = {0x00, 0x00};
 
 void (*blemidi_callback_midi_message_received)(uint8_t blemidi_port, uint16_t timestamp, uint8_t midi_status, uint8_t *remaining_message, size_t len, size_t continued_sysex_pos);
+void (*blemidi_callback_on_connect)();
+void (*blemidi_callback_on_disconnect)();
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -684,10 +686,15 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             conn_params.timeout = 400;    // timeout = 400*10ms = 4000ms
             //start sent the update connection parameters to the peer device.
             esp_ble_gap_update_conn_params(&conn_params);
+
+            // Call on_connect callback
+            blemidi_callback_on_connect();
             break;
         case ESP_GATTS_DISCONNECT_EVT:
             ESP_LOGI(BLEMIDI_TAG, "ESP_GATTS_DISCONNECT_EVT, reason = 0x%x", param->disconnect.reason);
             esp_ble_gap_start_advertising(&adv_params);
+            // Call on_disconnect callback
+            blemidi_callback_on_disconnect();
             break;
         case ESP_GATTS_CREAT_ATTR_TAB_EVT:{
             if (param->add_attr_tab.status != ESP_GATT_OK){
@@ -749,12 +756,14 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initializes the BLE MIDI Server
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-int32_t blemidi_init(void *_callback_midi_message_received)
+int32_t blemidi_init(void *_callback_midi_message_received, void *_callback_midi_on_connect, void *_callback_midi_on_disconnect)
 {
   esp_err_t ret;
 
   // callback will be installed if driver was booted successfully
   blemidi_callback_midi_message_received = NULL;
+  blemidi_callback_on_connect = NULL;
+  blemidi_callback_on_disconnect = NULL;
 
   // /* Initialize NVS. */
   // ret = nvs_flash_init();
@@ -827,8 +836,10 @@ int32_t blemidi_init(void *_callback_midi_message_received)
 
   // Finally install callback
   blemidi_callback_midi_message_received = _callback_midi_message_received;
+  blemidi_callback_on_connect = _callback_midi_on_connect;
+  blemidi_callback_on_disconnect = _callback_midi_on_disconnect;
 
-  esp_log_level_set(BLEMIDI_TAG, ESP_LOG_WARN); // can be changed with the "blemidi_debug on" console command
+  // esp_log_level_set(BLEMIDI_TAG, ESP_LOG_WARN); // can be changed with the "blemidi_debug on" console command
 
   return 0; // no error
 }
