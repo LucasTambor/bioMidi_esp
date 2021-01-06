@@ -6,4 +6,6 @@
 
 void vTouchButton( void *pvParameters );
 
+void touch_add_callback(uint16_t ms, void (*func)());
+
 #endif //_TOUCH_APP_H_
