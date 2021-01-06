@@ -86,3 +86,34 @@ https://github.com/lathoub/Arduino-BLE-MIDI
 # Issues
 
 * i2c_master_cmd_begin() in i2c_read_bytes() Timeout de vez em quando
+
+# BLE
+
+## Attribute Protocol (ATT)
+
+ATT defines how a server exposes its data to a client and how this data is structured. There are two roles within the ATT:
+
+  * Server:
+
+    Exposes the data it controls or contains. Accepts incoming commands from a peer device and sends responses, notifications, and indications
+
+  * Client:
+
+    Interfaces with the server with the purpose of reading the server’s exposed data and/or controlling the server’s behavior
+
+The data that the server exposes is structured as attributes:
+
+  * Attribute type (Universally Unique Identifier or UUID):
+
+    This is a 16-bit number (in the case of Bluetooth SIG-Adopted Attributes), or 128-bit number (in the case of custom attribute types defined by the developer, also sometimes referred to as vendor-specific UUIDs)
+
+  * Attribute Handle:
+
+    This is a 16-bit value that the server assigns to each of its attributes — think of it as an address.
+
+  * Attribute Permissions:
+
+    Permissions determine whether an attribute can be read or written to, whether it can be notified or indicated, and what security levels are required for each of these operations. These permissions are not defined or discovered via the Attribute Protocol (ATT) but rather defined at a higher layer (GATT layer or Application layer).
+
+## The Generic Attribute Profile (GATT)
+
