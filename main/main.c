@@ -17,24 +17,8 @@
 #include "task_console.h"
 #include "i2c_app.h"
 #include "i2c_driver.h"
-#include "led_app.h"
 #include "uart_app.h"
-#include "touch_app.h"
-#include "mic_app.h"
-#include "bmp280_app.h"
-#include "mpu6050_app.h"
-#include "hr_app.h"
-
-#define STACK_SIZE_2048 2048
-
-#define  osPriorityIdle             configMAX_PRIORITIES - 6
-#define  osPriorityLow              configMAX_PRIORITIES - 5
-#define  osPriorityBelowNormal      configMAX_PRIORITIES - 4
-#define  osPriorityNormal       	configMAX_PRIORITIES - 3
-#define  osPriorityAboveNormal      configMAX_PRIORITIES - 2
-#define  osPriorityHigh             configMAX_PRIORITIES - 1
-#define  osPriorityRealtime         configMAX_PRIORITIES - 0
-
+#include "midi_controller.h"
 
 //**********************************************************************************************************
 
@@ -51,13 +35,8 @@ TaskHandle_t xTaskConsoleHandle;
 TaskHandle_t xTaskMPU6050Handle;
 TaskHandle_t xTaskI2CReadHandle;
 TaskHandle_t xTaskI2CWriteHandle;
-TaskHandle_t xTaskLedControlHandle;
 TaskHandle_t xTaskUartHandle;
-TaskHandle_t xTaskTouchHandle;
-TaskHandle_t xTaskMicHandle;
-TaskHandle_t xTaskBMPHandle;
-TaskHandle_t xTaskMPUHandle;
-TaskHandle_t xTaskHeartRateHandle;
+
 
 //**********************************************************************************************************
 // Event Groups
@@ -137,23 +116,6 @@ void app_main(void)
                             APP_CPU_NUM);                           /*  0 for PRO_CPU, 1 for APP_CPU, or tskNO_AFFINITY which allows the task to run on both */
 
 
-    xTaskCreatePinnedToCore(vMPU6050Task,
-                            "vMPU6050Task",
-                            STACK_SIZE_2048,
-                            NULL,
-                            osPriorityNormal,
-                            &xTaskMPUHandle,
-                            0
-                            );
-
-    xTaskCreatePinnedToCore(vLedControlTask,
-                            "vLedControlTask",
-                            STACK_SIZE_2048,
-                            NULL,
-                            osPriorityNormal,
-                            &xTaskLedControlHandle,
-                            APP_CPU_NUM
-                            );
 
     xTaskCreatePinnedToCore(vDataStream,
                             "vDataStream",
@@ -161,45 +123,17 @@ void app_main(void)
                             NULL,
                             osPriorityHigh,
                             &xTaskUartHandle,
-                            0
-                            );
+                            PRO_CPU_NUM);
 
-    xTaskCreatePinnedToCore(vTouchButton,
-                            "vTouchStream",
-                            STACK_SIZE_2048,
-                            NULL,
-                            osPriorityNormal,
-                            &xTaskTouchHandle,
-                            APP_CPU_NUM
-                            );
 
-    xTaskCreatePinnedToCore(vMic,
-                            "vMic",
-                            STACK_SIZE_2048 * 4,
-                            NULL,
-                            osPriorityNormal,
-                            &xTaskMicHandle,
-                            APP_CPU_NUM
-                            );
-
-    xTaskCreatePinnedToCore(vBMP280Task,
-                            "vBMP280Task",
+    //Core 0
+    xTaskCreatePinnedToCore(vMidiController,
+                            "vMidiController",
                             STACK_SIZE_2048 * 2,
                             NULL,
-                            osPriorityNormal,
-                            &xTaskBMPHandle,
-                            APP_CPU_NUM
-                            );
-
-    xTaskCreatePinnedToCore(vHeartRateTask,
-                            "vHeartRateTask",
-                            STACK_SIZE_2048,
-                            NULL,
-                            osPriorityNormal,
-                            &xTaskHeartRateHandle,
-                            APP_CPU_NUM
-                            );
-
+                            osPriorityHigh,
+                            &xTaskUartHandle,
+                            PRO_CPU_NUM);
 
 
     while(1) {

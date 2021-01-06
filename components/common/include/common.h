@@ -24,6 +24,14 @@
 
 extern EventGroupHandle_t xEventGroupTasks;
 
+#define STACK_SIZE_2048 2048
 
+#define  osPriorityIdle             configMAX_PRIORITIES - 6
+#define  osPriorityLow              configMAX_PRIORITIES - 5
+#define  osPriorityBelowNormal      configMAX_PRIORITIES - 4
+#define  osPriorityNormal       	configMAX_PRIORITIES - 3
+#define  osPriorityAboveNormal      configMAX_PRIORITIES - 2
+#define  osPriorityHigh             configMAX_PRIORITIES - 1
+#define  osPriorityRealtime         configMAX_PRIORITIES - 0
 
 #endif //_COMMON_H_
