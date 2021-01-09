@@ -66,6 +66,58 @@ static void mpu6050_data_stream() {
 
 }
 
+esp_err_t mpu6050_send_data() {
+    app_data_t data_accel_x = {
+        .id = DATA_ID_ACCEL_X,
+        .data = mpu6050_data.accel_x
+    };
+    if (xQueueSend( xQueueAppData, (void *)&data_accel_x, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    app_data_t data_accel_y = {
+        .id = DATA_ID_ACCEL_Y,
+        .data = mpu6050_data.accel_y
+    };
+    if (xQueueSend( xQueueAppData, (void *)&data_accel_y, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    app_data_t data_accel_z = {
+        .id = DATA_ID_ACCEL_Z,
+        .data = mpu6050_data.accel_z
+    };
+    if (xQueueSend( xQueueAppData, (void *)&data_accel_z, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    app_data_t data_gyr_x = {
+        .id = DATA_ID_GYR_X,
+        .data = mpu6050_data.gyr_x
+    };
+    if (xQueueSend( xQueueAppData, (void *)&data_gyr_x, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    app_data_t data_gyr_y = {
+        .id = DATA_ID_GYR_Y,
+        .data = mpu6050_data.gyr_y
+    };
+    if (xQueueSend( xQueueAppData, (void *)&data_gyr_y, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    app_data_t data_gyr_z = {
+        .id = DATA_ID_GYR_Z,
+        .data = mpu6050_data.gyr_z
+    };
+    if (xQueueSend( xQueueAppData, (void *)&data_gyr_z, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    return ESP_OK;
+}
+
 void vMPU6050Task( void *pvParameters ) {
     esp_err_t err = ESP_OK;
 
@@ -112,6 +164,7 @@ void vMPU6050Task( void *pvParameters ) {
         }
 
         // mpu6050_data_stream();
+        mpu6050_send_data();
 
         vTaskDelay(pdMS_TO_TICKS(200));
     }

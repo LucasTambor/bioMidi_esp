@@ -1,12 +1,36 @@
 #include "bmp280_app.h"
 #include "bmp280_driver.h"
 #include "esp_log.h"
+#include "esp_err.h"
 #include "common.h"
 
 static const char *TAG = "BMP280_App";
 SemaphoreHandle_t xBMP280DataMutex;
 
 static bmp280_data_t bmp_data;
+
+esp_err_t bmp280_send_data() {
+    app_data_t data_temperature = {
+        .id = DATA_ID_TEMPERATURE,
+        .data = bmp_data.temperature
+    };
+
+    if (xQueueSend( xQueueAppData, (void *)&data_temperature, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+    app_data_t data_pressure = {
+        .id = DATA_ID_PRESSURE,
+        .data = bmp_data.pressure
+    };
+
+    if (xQueueSend( xQueueAppData, (void *)&data_pressure, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "ERROR sendig data to queue");
+        return ESP_ERR_TIMEOUT;
+    }
+
+    return ESP_OK;
+}
 
 void vBMP280Task( void *pvParameters ) {
     esp_err_t err = ESP_OK;
@@ -43,6 +67,8 @@ void vBMP280Task( void *pvParameters ) {
             if(err != ESP_OK) {
                 ESP_LOGE(TAG, "ERROR: %s", esp_err_to_name(err));
             }
+            // send to app queue
+            bmp280_send_data();
             xSemaphoreGive(xBMP280DataMutex);
         }
 
@@ -56,8 +82,7 @@ esp_err_t bmp280_app_read_data(bmp280_data_t * data) {
         return ESP_ERR_TIMEOUT;
     }
 
-    data->temperature = bmp_data.temperature;
-    data->pressure = bmp_data.pressure;
+    *data = bmp_data;
 
     xSemaphoreGive(xBMP280DataMutex);
 

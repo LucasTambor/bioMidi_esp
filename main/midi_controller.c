@@ -34,6 +34,9 @@ TaskHandle_t xTaskHeartRateHandle;
 static const char* TAG = "MidiControler";
 static midi_controller_state_e bio_midi_state = STATE_IDLE;
 
+QueueHandle_t xQueueAppData;
+static app_data_t dataReceived;
+
 //**********************************************************************************************************
 // Touch Callbacks
 
@@ -42,7 +45,7 @@ void callback_2000ms(){
     memset(&led, 0, sizeof(LED_Status));
 
     led.color = 0;
-    led.freq = 1000;
+    led.freq = 0;
 
     if(xQueueSend( xQueueLedBuffer, (void *)&led, portMAX_DELAY ) == pdFAIL) {
         ESP_LOGE(TAG, "Error sending color to queue");
@@ -62,7 +65,7 @@ void callback_5000ms(){
 }
 
 //**********************************************************************************************************
-const char * state_to_string[STATE_MAX] = {"IDLE","CONNECTED", "DISCONNECTED", "RUN", "CALIBRATION", "SLEEP"};
+const char * state_to_string[STATE_MAX] = {"IDLE","WAITING_CONNECTION","CONNECTED", "DISCONNECTED", "RUN", "CALIBRATION", "SLEEP"};
 
 static void set_state(midi_controller_state_e new_state) {
     ESP_LOGI(TAG, "State [%s] -> [%s]", state_to_string[bio_midi_state], state_to_string[new_state]);
@@ -107,9 +110,64 @@ void onDisconnect(){
 }
 
 //**********************************************************************************************************
+// Midi Data processing
+const char * data_id_to_string[DATA_ID_MAX] = {"DATA_ID_ACCEL_X","DATA_ID_ACCEL_Y", "DATA_ID_ACCEL_Z", "DATA_ID_GYR_X", "DATA_ID_GYR_Y", "DATA_ID_GYR_Z",
+                                                "DATA_ID_TEMPERATURE", "DATA_ID_PRESSURE", "DATA_ID_FFT", "DATA_ID_HEART_RATE"};
+
+esp_err_t midi_proccess_data(data_id_e id, float value ) {
+    // ESP_LOGD(TAG, "Received data from %s: %.2f", data_id_to_string[id], value);
+
+    switch(id) {
+        case DATA_ID_ACCEL_X:
+            
+        break;
+        case DATA_ID_ACCEL_Y:
+
+        break;
+        case DATA_ID_ACCEL_Z:
+
+        break;
+        case DATA_ID_GYR_X:
+
+        break;
+        case DATA_ID_GYR_Y:
+
+        break;
+        case DATA_ID_GYR_Z:
+
+        break;
+        case DATA_ID_TEMPERATURE:
+
+        break;
+        case DATA_ID_PRESSURE:
+
+        break;
+        case DATA_ID_FFT:
+
+            // ESP_LOGE(TAG, "FFT");
+        break;
+        case DATA_ID_HEART_RATE:
+
+        break;
+        case DATA_ID_MAX:
+
+        break;
+        default:
+            ESP_LOGE(TAG, "Unknow DATA ID");
+            return ESP_ERR_INVALID_STATE;
+        break;
+    }
+
+    return ESP_OK;
+}
+
+//**********************************************************************************************************
 // Midi Controller Task
 
 void vMidiController(void * pvParameters) {
+
+    // init app queue
+    xQueueAppData = xQueueCreate(16, sizeof(app_data_t));
 
     xTaskCreatePinnedToCore(vMPU6050Task,
                             "vMPU6050Task",
@@ -171,7 +229,10 @@ void vMidiController(void * pvParameters) {
     touch_add_callback(2000, callback_2000ms);
     touch_add_callback(5000, callback_5000ms);
 
+    // esp_log_level_set(TAG, ESP_LOG_DEBUG);
+
     while(1) {
+        esp_err_t err = ESP_OK;
         switch(bio_midi_state) {
             case STATE_IDLE:
             {
@@ -181,17 +242,29 @@ void vMidiController(void * pvParameters) {
                     ESP_LOGE(TAG, "BLE MIDI Driver returned status=%d", status);
                 } else {
                     ESP_LOGI(TAG, "BLE MIDI Driver initialized successfully");
-                    set_state(STATE_RUN);
+                    set_state(STATE_WAITING_CONNECTION);
                 }
 
             }
             break;
+            case STATE_WAITING_CONNECTION:
+                vTaskDelay(pdMS_TO_TICKS(1000));
+
+            break;
             case STATE_CONNECTED:
+                set_state(STATE_RUN);
             break;
             case STATE_DISCONNECTED:
+                vTaskDelay(pdMS_TO_TICKS(1000));
 
             break;
             case STATE_RUN:
+            {
+                if( xQueueReceive( xQueueAppData, (void *)&dataReceived, portMAX_DELAY ) == pdPASS ) {
+                    midi_proccess_data(dataReceived.id, dataReceived.data);
+                    // blemidi_send_message(0, )
+                }
+            }
             break;
             case STATE_SLEEP:
             break;
@@ -201,7 +274,7 @@ void vMidiController(void * pvParameters) {
                 ESP_LOGE(TAG, "Unknown state");
             break;
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        // vTaskDelay(pdMS_TO_TICKS(100));
     }
 
 }

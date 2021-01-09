@@ -129,11 +129,12 @@ void app_main(void)
     //Core 0
     xTaskCreatePinnedToCore(vMidiController,
                             "vMidiController",
-                            STACK_SIZE_2048 * 2,
+                            STACK_SIZE_2048 * 8,
                             NULL,
                             osPriorityHigh,
                             &xTaskUartHandle,
                             PRO_CPU_NUM);
+
 
 
     while(1) {

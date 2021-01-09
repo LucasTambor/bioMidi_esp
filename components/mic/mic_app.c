@@ -95,6 +95,14 @@ void vTaskFFT(void *pvParameters) {
             float main_freq = ((float)I2S_SAMPLE_RATE / (float)I2S_AUDIO_BUFFER_SIZE) * max_index;
             // ESP_LOGI(TAG_FFT, "MAIN_FREQ: %2.2f - %2.2f | 31.5Hz: %2.2f | 63Hz: %2.2f | 94,5Hz: %2.2f | 126Hz: %2.2f | 257,5Hz: %2.2f ", main_freq, max, y1_cf[1], y1_cf[2], y1_cf[3], y1_cf[4], y1_cf[5]  );
 
+            // Send to App
+            app_data_t fft_data = {
+                .id = DATA_ID_FFT,
+                .data = y1_cf[1],
+            };
+            if (xQueueSend( xQueueAppData, (void *)&fft_data, portMAX_DELAY ) == pdFAIL) {
+                ESP_LOGE(TAG_FFT, "ERROR sendig FFT data to APP queue");
+            }
             // Send to FFT Stream
             if(xSemaphoreTake(xMicFFTStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
                 if(mic_fft_stream) {

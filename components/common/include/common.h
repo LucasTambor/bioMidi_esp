@@ -1,6 +1,7 @@
 #ifndef _COMMON_H_
 #define _COMMON_H_
 
+#include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
 /**
@@ -20,8 +21,6 @@
 #define BIT_TASK_DATA_STREAM    (1<<8)
 #define BIT_TASK_CONSOLE        (1<<9)
 
-
-
 extern EventGroupHandle_t xEventGroupTasks;
 
 #define STACK_SIZE_2048 2048
@@ -34,4 +33,26 @@ extern EventGroupHandle_t xEventGroupTasks;
 #define  osPriorityHigh             configMAX_PRIORITIES - 1
 #define  osPriorityRealtime         configMAX_PRIORITIES - 0
 
+// Queue for the application to receive data from the other tasks
+extern QueueHandle_t xQueueAppData;
+
+typedef enum {
+    DATA_ID_ACCEL_X = 0,
+    DATA_ID_ACCEL_Y,
+    DATA_ID_ACCEL_Z,
+    DATA_ID_GYR_X,
+    DATA_ID_GYR_Y,
+    DATA_ID_GYR_Z,
+    DATA_ID_TEMPERATURE,
+    DATA_ID_PRESSURE,
+    DATA_ID_FFT,
+    DATA_ID_HEART_RATE,
+    DATA_ID_MAX,
+}data_id_e;
+
+
+typedef struct {
+    data_id_e id;
+    float data;
+}app_data_t;
 #endif //_COMMON_H_
