@@ -37,12 +37,9 @@ extern EventGroupHandle_t xEventGroupTasks;
 extern QueueHandle_t xQueueAppData;
 
 typedef enum {
-    DATA_ID_ACCEL_X = 0,
-    DATA_ID_ACCEL_Y,
-    DATA_ID_ACCEL_Z,
-    DATA_ID_GYR_X,
-    DATA_ID_GYR_Y,
-    DATA_ID_GYR_Z,
+    DATA_ID_ROLL = 0,
+    DATA_ID_PITCH,
+    DATA_ID_YAW,
     DATA_ID_TEMPERATURE,
     DATA_ID_PRESSURE,
     DATA_ID_FFT,

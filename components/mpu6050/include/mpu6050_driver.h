@@ -63,6 +63,10 @@ typedef struct {
     double z;
 } mpu6050_gyr_data_t;
 
+
+
+
+
 esp_err_t mpu6050_init();
 esp_err_t mpu6050_read_accel(mpu6050_accel_data_t * data);
 esp_err_t mpu6050_read_gyr(mpu6050_gyr_data_t * data);

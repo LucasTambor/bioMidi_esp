@@ -111,29 +111,20 @@ void onDisconnect(){
 
 //**********************************************************************************************************
 // Midi Data processing
-const char * data_id_to_string[DATA_ID_MAX] = {"DATA_ID_ACCEL_X","DATA_ID_ACCEL_Y", "DATA_ID_ACCEL_Z", "DATA_ID_GYR_X", "DATA_ID_GYR_Y", "DATA_ID_GYR_Z",
-                                                "DATA_ID_TEMPERATURE", "DATA_ID_PRESSURE", "DATA_ID_FFT", "DATA_ID_HEART_RATE"};
+const char * data_id_to_string[DATA_ID_MAX] = {"DATA_ID_ROLL","DATA_ID_PITCH", "DATA_ID_YAW", "DATA_ID_TEMPERATURE",
+                                              "DATA_ID_PRESSURE", "DATA_ID_FFT", "DATA_ID_HEART_RATE"};
 
 esp_err_t midi_proccess_data(data_id_e id, float value ) {
     // ESP_LOGD(TAG, "Received data from %s: %.2f", data_id_to_string[id], value);
 
     switch(id) {
-        case DATA_ID_ACCEL_X:
-            
-        break;
-        case DATA_ID_ACCEL_Y:
+        case DATA_ID_ROLL:
 
         break;
-        case DATA_ID_ACCEL_Z:
+        case DATA_ID_PITCH:
 
         break;
-        case DATA_ID_GYR_X:
-
-        break;
-        case DATA_ID_GYR_Y:
-
-        break;
-        case DATA_ID_GYR_Z:
+        case DATA_ID_YAW:
 
         break;
         case DATA_ID_TEMPERATURE:

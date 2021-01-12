@@ -69,7 +69,7 @@ esp_err_t mpu6050_init() {
         return err;
     }
     // Configure gyroscope
-    data[0] =_2000_DEGREE;
+    data[0] =_250_DEGREE;
     err = mpu6050_write(MPU6050_GYRO_CONFIG, 1, data);
     if(err != ESP_OK) {
         ESP_LOGE(TAG, "Error configuring Gyro");
@@ -123,9 +123,9 @@ esp_err_t mpu6050_read_gyr(mpu6050_gyr_data_t * data) {
     gyr_read_y = ((uint16_t)(data_read[2] << 8) | ((uint16_t)data_read[3]));
     gyr_read_z = ((uint16_t)(data_read[4] << 8) | ((uint16_t)data_read[5]));
 
-    data->x = -gyr_read_x /LSB_Sensitivity_2G;
-    data->y = -gyr_read_y /LSB_Sensitivity_2G;
-    data->z = -gyr_read_z /LSB_Sensitivity_2G;
+    data->x = -gyr_read_x /LSB_Sensitivity_250;
+    data->y = -gyr_read_y /LSB_Sensitivity_250;
+    data->z = -gyr_read_z /LSB_Sensitivity_250;
 
     return ESP_OK;
 }
