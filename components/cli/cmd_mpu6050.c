@@ -15,16 +15,20 @@ static int cmd_mpu6050_read_data(int argc, char **argv)
     (void) argv;
 
     mpu6050_data_t data;
+    mpu6050_angle_data_t angle_data;
 
-    ESP_ERROR_CHECK(mpu6050_app_read_data(&data));
+    ESP_ERROR_CHECK(mpu6050_app_read_data(&data, &angle_data));
 
-    printf("\naccel_x: %.2f   \
+    printf("\nRoll: %.2f \
+    \nPitch: %.2f     \
+    \nYaw: %.2f     \
+    \naccel_x: %.2f   \
     \naccel_y: %.2f   \
     \naccel_z: %.2f   \
     \ngyro_x: %.2f   \
     \ngyro_y: %.2f   \
     \ngyro_z: %.2f   \
-    \ntempo: %.2f", data.accel_x, data.accel_y, data.accel_z, data.gyr_x, data.gyr_y, data.gyr_z, data.temperature);
+    \ntempo: %.2f", angle_data.roll, angle_data.pitch, angle_data.yaw, data.accel_x, data.accel_y, data.accel_z, data.gyr_x, data.gyr_y, data.gyr_z, data.temperature);
 
     return 0;
 }

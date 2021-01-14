@@ -4,6 +4,7 @@
 #include "uart_app.h"
 #include "esp_log.h"
 #include "common.h"
+#include <string.h>
 
 //****************************************************************************************************************
 
@@ -11,6 +12,7 @@ static const char *TAG = "MPU6050_App";
 SemaphoreHandle_t xMPU6050DataMutex;
 
 static mpu6050_data_t mpu6050_data;
+static mpu6050_angle_data_t mpu6050_angle_data;
 
 // Error correction values
 static double accel_error_x = 0;
@@ -81,7 +83,7 @@ esp_err_t mpu6050_send_data(mpu6050_angle_data_t real_angle) {
         .id = DATA_ID_ROLL,
         .data = real_angle.roll
     };
-    if (xQueueSend( xQueueAppData, (void *)&data_roll, portMAX_DELAY ) == pdFAIL) {
+    if (xQueueSend( xQueueAppData, (void *)&data_roll, 0 ) == pdFAIL) {
         ESP_LOGE(TAG, "ERROR sendig data to queue");
         return ESP_ERR_TIMEOUT;
     }
@@ -89,7 +91,7 @@ esp_err_t mpu6050_send_data(mpu6050_angle_data_t real_angle) {
         .id = DATA_ID_PITCH,
         .data = real_angle.pitch
     };
-    if (xQueueSend( xQueueAppData, (void *)&data_pitch, portMAX_DELAY ) == pdFAIL) {
+    if (xQueueSend( xQueueAppData, (void *)&data_pitch, 0 ) == pdFAIL) {
         ESP_LOGE(TAG, "ERROR sendig data to queue");
         return ESP_ERR_TIMEOUT;
     }
@@ -97,7 +99,7 @@ esp_err_t mpu6050_send_data(mpu6050_angle_data_t real_angle) {
         .id = DATA_ID_YAW,
         .data = real_angle.yaw
     };
-    if (xQueueSend( xQueueAppData, (void *)&data_yaw, portMAX_DELAY ) == pdFAIL) {
+    if (xQueueSend( xQueueAppData, (void *)&data_yaw, 0 ) == pdFAIL) {
         ESP_LOGE(TAG, "ERROR sendig data to queue");
         return ESP_ERR_TIMEOUT;
     }
@@ -127,6 +129,8 @@ static void mpu6050_calculate_angle(mpu6050_angle_data_t * gyr_angle, mpu6050_an
     real_angle->roll = 0.96 * gyr_angle->roll + 0.04 * accel_angle->roll;
     real_angle->pitch = 0.96 * gyr_angle->pitch + 0.04 * accel_angle->pitch;
     real_angle->yaw = gyr_angle->yaw;
+    // ESP_LOGI(TAG, "Bleu");
+
 }
 
 void vMPU6050Task( void *pvParameters ) {
@@ -174,26 +178,33 @@ void vMPU6050Task( void *pvParameters ) {
             mpu6050_data.gyr_y = gyr_data.y;
             mpu6050_data.gyr_z = gyr_data.z;
             mpu6050_data.temperature = temp_data;
+
+            // Calculate angles
+            mpu6050_calculate_angle_accel(&accel_data, &accel_angle);
+            mpu6050_calculate_angle_gyr(&gyr_data, &gyr_angle);
+            mpu6050_calculate_angle(&gyr_angle, &accel_angle, &real_angle);
+
+            mpu6050_angle_data = real_angle;
             xSemaphoreGive(xMPU6050DataMutex);
         }
-        // Calculate angles
-        mpu6050_calculate_angle_accel(&accel_data, &accel_angle);
-        mpu6050_calculate_angle_gyr(&gyr_data, &gyr_angle);
-        mpu6050_calculate_angle(&gyr_angle, &accel_angle, &real_angle);
 
+        // Wait main application is ready to receive data
+        if(xEventGroupGetBits(xEventGroupApp) & BIT_APP_SEND_DATA) {
+            mpu6050_send_data(real_angle);
+        }
         // mpu6050_data_stream();
-        mpu6050_send_data(real_angle);
 
         vTaskDelay(pdMS_TO_TICKS(MPU_6050_TASK_PERIOD_MS));
     }
 }
 
-esp_err_t mpu6050_app_read_data(mpu6050_data_t * data) {
+esp_err_t mpu6050_app_read_data(mpu6050_data_t * data, mpu6050_angle_data_t * angle_data) {
     if(xSemaphoreTake(xMPU6050DataMutex, portMAX_DELAY) != pdTRUE) {
         return ESP_ERR_TIMEOUT;
     }
 
     *data = mpu6050_data;
+    *angle_data = mpu6050_angle_data;
 
     xSemaphoreGive(xMPU6050DataMutex);
 
@@ -201,29 +212,37 @@ esp_err_t mpu6050_app_read_data(mpu6050_data_t * data) {
 }
 
 esp_err_t mpu6050_app_calibrate(mpu6050_data_t * data_error) {
-    mpu6050_gyr_data_t gyr_data = {0};
-    mpu6050_accel_data_t accel_data = {0};
-    mpu6050_angle_data_t gyr_angle = {0};
-    mpu6050_angle_data_t accel_angle = {0};
-    mpu6050_angle_data_t real_angle = {0};
-    for(uint8_t i = 0; i<200; i++) {
+    mpu6050_gyr_data_t gyr_data;
+    mpu6050_accel_data_t accel_data;
+    mpu6050_angle_data_t gyr_angle;
+    mpu6050_angle_data_t accel_angle;
+
+    memset(&gyr_data, 0, sizeof(mpu6050_gyr_data_t));
+    memset(&accel_data, 0, sizeof(mpu6050_accel_data_t));
+    memset(&gyr_angle, 0, sizeof(mpu6050_angle_data_t));
+    memset(&accel_angle, 0, sizeof(mpu6050_angle_data_t));
+
+    for(uint8_t i = 0; i<2; i++) {
         ESP_ERROR_CHECK(mpu6050_read_accel(&accel_data));
+        ESP_LOGI(TAG, "Ax: %.2f | Ay: %.2f | Az: %.2f  ", accel_data.x, accel_data.y, accel_data.z);
         accel_angle.roll += (atan(accel_data.y / sqrt(pow(accel_data.x, 2) + pow(accel_data.z, 2))) * 180 / M_PI);
         accel_angle.pitch += (atan(-1 * accel_data.x / sqrt(pow(accel_data.y, 2) + pow(accel_data.z, 2))) * 180 / M_PI);
+        ESP_LOGI(TAG, "Ar: %.2f | Ap: %.2f", accel_angle.roll, accel_angle.pitch);
     }
-    accel_angle.roll = accel_angle.roll / 200;
-    accel_angle.pitch = accel_angle.pitch / 200;
+    accel_angle.roll = accel_angle.roll / 2;
+    accel_angle.pitch = accel_angle.pitch / 2;
 
-    for(uint8_t i = 0; i<200; i++) {
-        ESP_ERROR_CHECK(mpu6050_read_accel(&gyr_data));
+
+    for(uint8_t i = 0; i<50; i++) {
+        ESP_ERROR_CHECK(mpu6050_read_gyr(&gyr_data));
         gyr_angle.roll += gyr_data.x;
         gyr_angle.pitch += gyr_data.y;
         gyr_angle.yaw += gyr_data.z;
     }
 
-    gyr_angle.roll += gyr_angle.roll / 200;
-    gyr_angle.pitch += gyr_angle.pitch / 200 ;
-    gyr_angle.yaw += gyr_angle.yaw / 200;
+    gyr_angle.roll = gyr_angle.roll / 50;
+    gyr_angle.pitch = gyr_angle.pitch / 50 ;
+    gyr_angle.yaw = gyr_angle.yaw / 50;
 
     // Set local errors
     accel_error_x = accel_angle.roll;
@@ -231,12 +250,20 @@ esp_err_t mpu6050_app_calibrate(mpu6050_data_t * data_error) {
     gyr_error_x = gyr_angle.roll;
     gyr_error_y = gyr_angle.pitch;
     gyr_error_z = gyr_angle.yaw;
+
+    ESP_LOGI(TAG, "Accel error x: %.2f \n \
+                 Accel error y: %.2f \n \
+                 Gyro error x: %.2f \n \
+                 Gyro error y: %.2f \n \
+                 Gyro error z: %.2f", accel_error_x, accel_error_y, gyr_error_x, gyr_error_y, gyr_error_z);
     // Return errors
-    data_error->accel_x = accel_angle.roll;
-    data_error->accel_y = accel_angle.pitch;
-    data_error->gyr_x = gyr_angle.roll;
-    data_error->gyr_y = gyr_angle.pitch;
-    data_error->gyr_z = gyr_angle.yaw;
+    if(data_error) {
+        data_error->accel_x = accel_angle.roll;
+        data_error->accel_y = accel_angle.pitch;
+        data_error->gyr_x = gyr_angle.roll;
+        data_error->gyr_y = gyr_angle.pitch;
+        data_error->gyr_z = gyr_angle.yaw;
+    }
 
     return ESP_OK;
 }

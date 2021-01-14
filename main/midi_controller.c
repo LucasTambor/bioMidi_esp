@@ -37,40 +37,9 @@ static midi_controller_state_e bio_midi_state = STATE_IDLE;
 QueueHandle_t xQueueAppData;
 static app_data_t dataReceived;
 
+// Flag connected to BLE
+static int8_t midi_connected = 0;
 //**********************************************************************************************************
-// Touch Callbacks
-
-void callback_2000ms(){
-    LED_Status led;
-    memset(&led, 0, sizeof(LED_Status));
-
-    led.color = 0;
-    led.freq = 0;
-
-    if(xQueueSend( xQueueLedBuffer, (void *)&led, portMAX_DELAY ) == pdFAIL) {
-        ESP_LOGE(TAG, "Error sending color to queue");
-    }
-}
-
-void callback_5000ms(){
-    LED_Status led;
-    memset(&led, 0, sizeof(LED_Status));
-
-    led.color = 2;
-    led.freq = 1000;
-
-    if(xQueueSend( xQueueLedBuffer, (void *)&led, portMAX_DELAY ) == pdFAIL) {
-        ESP_LOGE(TAG, "Error sending color to queue");
-    }
-}
-
-//**********************************************************************************************************
-const char * state_to_string[STATE_MAX] = {"IDLE","WAITING_CONNECTION","CONNECTED", "DISCONNECTED", "RUN", "CALIBRATION", "SLEEP"};
-
-static void set_state(midi_controller_state_e new_state) {
-    ESP_LOGI(TAG, "State [%s] -> [%s]", state_to_string[bio_midi_state], state_to_string[new_state]);
-    bio_midi_state = new_state;
-}
 
 static void set_led_color(led_color_e color, uint16_t freq) {
     LED_Status led;
@@ -98,14 +67,80 @@ static void set_led_color_rgb(uint8_t r, uint8_t g, uint8_t b, uint16_t freq) {
         ESP_LOGE(TAG, "Error sending color to queue");
     }
 }
+
+const char * state_to_string[STATE_MAX] = {"IDLE","WAITING_CONNECTION","CONNECTED", "DISCONNECTED", "RUN", "CALIBRATION", "SLEEP"};
+
+static void set_state(midi_controller_state_e new_state) {
+    ESP_LOGI(TAG, "State [%s] -> [%s]", state_to_string[bio_midi_state], state_to_string[new_state]);
+    bio_midi_state = new_state;
+
+    // Set App Group bit
+    if(new_state == STATE_RUN) {
+        xEventGroupSetBits(xEventGroupApp, BIT_APP_SEND_DATA);
+    }else{
+        xEventGroupClearBits(xEventGroupApp, BIT_APP_SEND_DATA);
+    }
+
+    //Led Color according to state
+    switch(new_state) {
+            case STATE_IDLE:
+            {
+                set_led_color(LED_RAINBOW, 0);
+            }
+            break;
+            case STATE_WAITING_CONNECTION:
+                set_led_color(LED_RAINBOW, 0);
+
+            break;
+            case STATE_CONNECTED:
+                set_led_color_rgb(96, 0, 128, 0);
+            break;
+            case STATE_DISCONNECTED:
+                set_led_color(LED_RED, 1000);
+            break;
+            case STATE_RUN:
+
+                set_led_color_rgb(96, 0, 128, 0);
+            break;
+            case STATE_SLEEP:
+            break;
+            case STATE_CALIBRATION:
+                set_led_color(LED_BLUE, 500);
+            break;
+            default:
+                ESP_LOGE(TAG, "Unknown state");
+            break;
+    }
+}
+
+
+
+//**********************************************************************************************************
+// Touch Callbacks
+
+// Calibrate Sensors
+void callback_2000ms(){
+    set_state(STATE_CALIBRATION);
+}
+
+void callback_5000ms(){
+    LED_Status led;
+    memset(&led, 0, sizeof(LED_Status));
+
+    led.color = 2;
+    led.freq = 1000;
+
+    if(xQueueSend( xQueueLedBuffer, (void *)&led, portMAX_DELAY ) == pdFAIL) {
+        ESP_LOGE(TAG, "Error sending color to queue");
+    }
+}
+
 //**********************************************************************************************************
 // BLEMidi Callbacks
 void onConnect(){
-    set_led_color_rgb(96, 0, 128, 0);
     set_state(STATE_CONNECTED);
 }
 void onDisconnect(){
-    set_led_color(LED_RED, 1000);
     set_state(STATE_DISCONNECTED);
 }
 
@@ -115,7 +150,7 @@ const char * data_id_to_string[DATA_ID_MAX] = {"DATA_ID_ROLL","DATA_ID_PITCH", "
                                               "DATA_ID_PRESSURE", "DATA_ID_FFT", "DATA_ID_HEART_RATE"};
 
 esp_err_t midi_proccess_data(data_id_e id, float value ) {
-    // ESP_LOGD(TAG, "Received data from %s: %.2f", data_id_to_string[id], value);
+    // ESP_LOGI(TAG, "Received data from %s: %.2f", data_id_to_string[id], value);
 
     switch(id) {
         case DATA_ID_ROLL:
@@ -162,7 +197,7 @@ void vMidiController(void * pvParameters) {
 
     xTaskCreatePinnedToCore(vMPU6050Task,
                             "vMPU6050Task",
-                            STACK_SIZE_2048,
+                            STACK_SIZE_2048 * 2,
                             NULL,
                             osPriorityNormal,
                             &xTaskMPUHandle,
@@ -198,7 +233,7 @@ void vMidiController(void * pvParameters) {
 
     xTaskCreatePinnedToCore(vBMP280Task,
                             "vBMP280Task",
-                            STACK_SIZE_2048 * 2,
+                            STACK_SIZE_2048 * 3,
                             NULL,
                             osPriorityNormal,
                             &xTaskBMPHandle,
@@ -220,10 +255,13 @@ void vMidiController(void * pvParameters) {
     touch_add_callback(2000, callback_2000ms);
     touch_add_callback(5000, callback_5000ms);
 
+    set_state(STATE_IDLE);
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
     while(1) {
-        esp_err_t err = ESP_OK;
+
+        // ESP_LOGI(TAG, "BioMidi State: %s", state_to_string[bio_midi_state], value);
+
         switch(bio_midi_state) {
             case STATE_IDLE:
             {
@@ -239,13 +277,16 @@ void vMidiController(void * pvParameters) {
             }
             break;
             case STATE_WAITING_CONNECTION:
+                midi_connected = 0;
                 vTaskDelay(pdMS_TO_TICKS(1000));
 
             break;
             case STATE_CONNECTED:
+                midi_connected = 1;
                 set_state(STATE_RUN);
             break;
             case STATE_DISCONNECTED:
+                midi_connected = -1;
                 vTaskDelay(pdMS_TO_TICKS(1000));
 
             break;
@@ -253,13 +294,26 @@ void vMidiController(void * pvParameters) {
             {
                 if( xQueueReceive( xQueueAppData, (void *)&dataReceived, portMAX_DELAY ) == pdPASS ) {
                     midi_proccess_data(dataReceived.id, dataReceived.data);
-                    // blemidi_send_message(0, )
                 }
             }
             break;
             case STATE_SLEEP:
             break;
             case STATE_CALIBRATION:
+            {
+                esp_err_t err = ESP_OK;
+                err = mpu6050_app_calibrate(NULL);
+                if(err != ESP_OK) {
+                    ESP_LOGE(TAG, "ERROR Calibrating: %s", esp_err_to_name(err));
+                }
+                if(midi_connected < 0){
+                    set_state(STATE_DISCONNECTED);
+                } else if(midi_connected > 0) {
+                    set_state(STATE_CONNECTED);
+                }else {
+                    set_state(STATE_WAITING_CONNECTION);
+                }
+            }
             break;
             default:
                 ESP_LOGE(TAG, "Unknown state");

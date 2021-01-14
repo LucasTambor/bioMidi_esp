@@ -12,6 +12,7 @@ Bracelete
 * Bateria Lítio
 
   https://www.filipeflop.com/blog/alimentar-esp32-com-bateria/
+  https://randomnerdtutorials.com/power-esp32-esp8266-solar-panels-battery-level-monitoring/
   https://www.filipeflop.com/produto/modulo-carregador-de-bateria-de-litio-tp4056/
 
 ## Sleep Modes
@@ -46,6 +47,10 @@ https://www.novelbits.io/bluetooth-gatt-services-characteristics/
 * Temperatura - Bmp280
 * Frequencia cardíaca - Sensor optico
 * Led RGB
+
+## MPU
+
+https://howtomechatronics.com/tutorials/arduino/arduino-and-mpu6050-accelerometer-and-gyroscope-tutorial/
 
 # Interface
 
@@ -83,9 +88,6 @@ https://github.com/fakufaku/esp32-fft
 * BLE - MIDI
 https://github.com/lathoub/Arduino-BLE-MIDI
 
-# Issues
-
-* i2c_master_cmd_begin() in i2c_read_bytes() Timeout de vez em quando
 
 # BLE
 

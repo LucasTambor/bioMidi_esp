@@ -5,7 +5,7 @@
 #include "freertos/event_groups.h"
 
 /**
- * Event Group Bit Definition
+ * Event Group Tasks Bit Definition
  *
  * Necessary for task synchronization
 */
@@ -22,6 +22,16 @@
 #define BIT_TASK_CONSOLE        (1<<9)
 
 extern EventGroupHandle_t xEventGroupTasks;
+
+/**
+ * Event Group App Bit Definition
+ *
+ * Necessary for task synchronization
+*/
+
+#define BIT_APP_SEND_DATA      (1<<0)
+
+extern EventGroupHandle_t xEventGroupApp;
 
 #define STACK_SIZE_2048 2048
 

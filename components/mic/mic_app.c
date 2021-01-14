@@ -100,9 +100,15 @@ void vTaskFFT(void *pvParameters) {
                 .id = DATA_ID_FFT,
                 .data = y1_cf[1],
             };
-            if (xQueueSend( xQueueAppData, (void *)&fft_data, portMAX_DELAY ) == pdFAIL) {
-                ESP_LOGE(TAG_FFT, "ERROR sendig FFT data to APP queue");
+
+            // Wait main application is ready to receive data
+            if(xEventGroupGetBits(xEventGroupApp) & BIT_APP_SEND_DATA) {
+                // send to app queue
+                if (xQueueSend( xQueueAppData, (void *)&fft_data, portMAX_DELAY ) == pdFAIL) {
+                    ESP_LOGE(TAG_FFT, "ERROR sendig FFT data to APP queue");
+                }
             }
+
             // Send to FFT Stream
             if(xSemaphoreTake(xMicFFTStreamEnableMutex, portMAX_DELAY) == pdTRUE) {
                 if(mic_fft_stream) {

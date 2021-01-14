@@ -41,6 +41,7 @@ TaskHandle_t xTaskUartHandle;
 //**********************************************************************************************************
 // Event Groups
 EventGroupHandle_t xEventGroupTasks;
+EventGroupHandle_t xEventGroupApp;
 
 //**********************************************************************************************************
 
@@ -86,6 +87,11 @@ void app_main(void)
     xEventGroupTasks = xEventGroupCreate();
     if(xEventGroupTasks == NULL) {
         ESP_LOGE(TAG, "ERROR Creating xEventGroupTasks");
+    }
+    // Initialize app event group
+    xEventGroupApp = xEventGroupCreate();
+    if(xEventGroupApp == NULL) {
+        ESP_LOGE(TAG, "ERROR Creating xEventGroupApp");
     }
 
     //Core 1

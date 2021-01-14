@@ -15,7 +15,7 @@ esp_err_t bmp280_send_data() {
         .data = bmp_data.temperature
     };
 
-    if (xQueueSend( xQueueAppData, (void *)&data_temperature, portMAX_DELAY ) == pdFAIL) {
+    if (xQueueSend( xQueueAppData, (void *)&data_temperature, 0 ) == pdFAIL) {
         ESP_LOGE(TAG, "ERROR sendig data to queue");
         return ESP_ERR_TIMEOUT;
     }
@@ -24,7 +24,7 @@ esp_err_t bmp280_send_data() {
         .data = bmp_data.pressure
     };
 
-    if (xQueueSend( xQueueAppData, (void *)&data_pressure, portMAX_DELAY ) == pdFAIL) {
+    if (xQueueSend( xQueueAppData, (void *)&data_pressure, 0 ) == pdFAIL) {
         ESP_LOGE(TAG, "ERROR sendig data to queue");
         return ESP_ERR_TIMEOUT;
     }
@@ -67,8 +67,11 @@ void vBMP280Task( void *pvParameters ) {
             if(err != ESP_OK) {
                 ESP_LOGE(TAG, "ERROR: %s", esp_err_to_name(err));
             }
-            // send to app queue
-            bmp280_send_data();
+            // Wait main application is ready to receive data
+            if(xEventGroupGetBits(xEventGroupApp) & BIT_APP_SEND_DATA) {
+                // send to app queue
+                bmp280_send_data();
+            }
             xSemaphoreGive(xBMP280DataMutex);
         }
 
