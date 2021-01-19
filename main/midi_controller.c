@@ -149,31 +149,51 @@ void onDisconnect(){
 const char * data_id_to_string[DATA_ID_MAX] = {"DATA_ID_ROLL","DATA_ID_PITCH", "DATA_ID_YAW", "DATA_ID_TEMPERATURE",
                                               "DATA_ID_PRESSURE", "DATA_ID_FFT", "DATA_ID_HEART_RATE"};
 
+static uint8_t map_value_u8(float value, float in_min, float in_max, uint8_t out_min, uint8_t out_max) {
+    return (uint8_t) ((value - in_min) * ((float) out_max - (float) out_min) / (in_max - in_min) + (float) out_min);
+}
+
 esp_err_t midi_proccess_data(data_id_e id, float value ) {
     // ESP_LOGI(TAG, "Received data from %s: %.2f", data_id_to_string[id], value);
-
+    midi_message_t midi_message = {
+        .status.status.type = MIDI_STATUS_CONTROL_CHANGE,
+        .status.status.channel = BIOMIDI_MIDI_CHANNEL,
+        .data = 0,
+        .control_number = 0
+    };
     switch(id) {
         case DATA_ID_ROLL:
-
+            midi_message.control_number = MIDI_CONTROLER_GPC_1;
+            midi_message.data = map_value_u8(value, -180, 180, 0, 127);
         break;
         case DATA_ID_PITCH:
+            midi_message.control_number = MIDI_CONTROLER_GPC_2;
+            midi_message.data = map_value_u8(value, -180, 180, 0, 127);
 
         break;
         case DATA_ID_YAW:
+            midi_message.control_number = MIDI_CONTROLER_GPC_3;
+            midi_message.data = map_value_u8(value, -180, 180, 0, 127);
 
         break;
         case DATA_ID_TEMPERATURE:
+            midi_message.control_number = MIDI_CONTROLER_GPC_5;
+            midi_message.data = map_value_u8(value, 36, 37.5, 0, 127);
 
         break;
         case DATA_ID_PRESSURE:
-
+            midi_message.control_number = MIDI_CONTROLER_GPC_6;
+            midi_message.data = map_value_u8(value, 36, 37.5, 0, 127);
         break;
         case DATA_ID_FFT:
 
+            midi_message.control_number = MIDI_CONTROLER_GPC_7;
+            midi_message.data = map_value_u8(value, 150, 200, 0, 127);
             // ESP_LOGE(TAG, "FFT");
         break;
         case DATA_ID_HEART_RATE:
-
+            midi_message.control_number = MIDI_CONTROLER_GPC_8;
+            midi_message.data = map_value_u8(value, 20, 200, 0, 127);
         break;
         case DATA_ID_MAX:
 
@@ -184,6 +204,16 @@ esp_err_t midi_proccess_data(data_id_e id, float value ) {
         break;
     }
 
+    uint8_t message[3];
+    message[0] = (uint8_t) midi_message.status.midi_status;
+    message[1] = (uint8_t) midi_message.control_number;
+    message[3] = midi_message.data;
+
+    ESP_LOGI(TAG, "0x%X | 0x%X | 0x%X ", message[0], message[1], message[2]);
+    if(blemidi_send_message(0, message, 3) < 0 ) {
+        ESP_LOGE(TAG, "ERROR sending message to BLEMIDI");
+        return ESP_ERR_INVALID_STATE;
+    }
     return ESP_OK;
 }
 
@@ -226,7 +256,7 @@ void vMidiController(void * pvParameters) {
                             "vMic",
                             STACK_SIZE_2048 * 4,
                             NULL,
-                            osPriorityNormal,
+                            osPriorityHigh,
                             &xTaskMicHandle,
                             APP_CPU_NUM
                             );
