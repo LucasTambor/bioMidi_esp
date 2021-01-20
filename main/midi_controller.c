@@ -210,6 +210,7 @@ esp_err_t midi_proccess_data(data_id_e id, float value ) {
     message[3] = midi_message.data;
 
     ESP_LOGI(TAG, "0x%X | 0x%X | 0x%X ", message[0], message[1], message[2]);
+    blemidi_tick();
     if(blemidi_send_message(0, message, 3) < 0 ) {
         ESP_LOGE(TAG, "ERROR sending message to BLEMIDI");
         return ESP_ERR_INVALID_STATE;

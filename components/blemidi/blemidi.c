@@ -46,10 +46,10 @@
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 
-#define PROFILE_NUM                 1
-#define PROFILE_APP_IDX             0
-#define ESP_APP_ID                  0x55
-#define SVC_INST_ID                 0
+#define BIOMIDI_PROFILE_NUM                 1       // Number of profiles in application
+#define BIOMIDI_APP_PROFILE_IDX             0       // Index of BioMidi app
+#define BIOMIDI_APP_ID                      0x55    // The Application Profile ID, which is an user-assigned number to identify each profile
+#define SVC_INST_ID                         0
 
 /* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
 *  the data length must be less than GATTS_MIDI_CHAR_VAL_LEN_MAX.
@@ -77,17 +77,17 @@ static uint16_t blemidi_outbuffer_timestamp_last_flush = 0;
 // to handled continued SysEx
 static size_t   blemidi_continued_sysex_pos[BLEMIDI_NUM_PORTS];
 
-/* Attributes State Machine */
+/* Enumeration of the services and characteristics */
 enum
 {
-    IDX_SVC,
-    IDX_CHAR_A,
-    IDX_CHAR_VAL_A,
-    IDX_CHAR_CFG_A,
+    BIOMIDI_IDX_SERVICE,
+    BIOMIDI_IDX_CHAR_A,
+    BIOMIDI_IDX_VAL_A,
+    BIOMIDI_IDX_CONFIG_A,
 
-    HRS_IDX_NB,
+    BIOMIDI_IDX_MAX,
 };
-uint16_t midi_handle_table[HRS_IDX_NB];
+uint16_t midi_handle_table[BIOMIDI_IDX_MAX];
 
 typedef struct {
     uint8_t                 *prepare_buf;
@@ -129,8 +129,8 @@ static esp_ble_adv_data_t scan_rsp_data = {
     .set_scan_rsp        = true,
     .include_name        = true,
     .include_txpower     = true,
-    .min_interval        = 0x0006,
-    .max_interval        = 0x0010,
+    .min_interval        = 0x0001,  // The minimum and maximum slave preferred connection intervals are set in units of 1.25 ms
+    .max_interval        = 0x000A,  //The BLE MIDI device must request a connection interval of 15 ms or less
     .appearance          = 0x00,
     .manufacturer_len    = 0, //TEST_MANUFACTURER_DATA_LEN,
     .p_manufacturer_data = NULL, //&test_manufacturer[0],
@@ -170,8 +170,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
                                         esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 /* One gatt-based profile one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
-static struct gatts_profile_inst midi_profile_tab[PROFILE_NUM] = {
-    [PROFILE_APP_IDX] = {
+static struct gatts_profile_inst midi_profile_tab[BIOMIDI_PROFILE_NUM] = {
+    [BIOMIDI_APP_PROFILE_IDX] = {
         .gatts_cb = gatts_profile_event_handler,
         .gatts_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     },
@@ -235,7 +235,7 @@ int32_t blemidi_outbuffer_flush(uint8_t blemidi_port)
     return -1; // invalid port
 
   if( blemidi_outbuffer_len[blemidi_port] > 0 ) {
-    esp_ble_gatts_send_indicate(midi_profile_tab[PROFILE_APP_IDX].gatts_if, midi_profile_tab[PROFILE_APP_IDX].conn_id, midi_handle_table[IDX_CHAR_VAL_A], blemidi_outbuffer_len[blemidi_port], blemidi_outbuffer[blemidi_port], false);
+    esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, midi_handle_table[BIOMIDI_IDX_VAL_A], blemidi_outbuffer_len[blemidi_port], blemidi_outbuffer[blemidi_port], false);
     blemidi_outbuffer_len[blemidi_port] = 0;
   }
   return 0; // no error
@@ -272,7 +272,7 @@ static int32_t blemidi_outbuffer_push(uint8_t blemidi_port, uint8_t *stream, siz
           packet_len -= 1;
           memcpy((uint8_t *)packet + 1, stream, len);
         }
-        esp_ble_gatts_send_indicate(midi_profile_tab[PROFILE_APP_IDX].gatts_if, midi_profile_tab[PROFILE_APP_IDX].conn_id, midi_handle_table[IDX_CHAR_VAL_A], packet_len, packet, false);
+        esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, midi_handle_table[BIOMIDI_IDX_VAL_A], packet_len, packet, false);
         free(packet);
       }
     }
@@ -475,25 +475,25 @@ void blemidi_receive_packet_callback_for_debugging(uint8_t blemidi_port, uint16_
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /* Full Database Description - Used to add attributes into the database */
-static const esp_gatts_attr_db_t gatt_db[HRS_IDX_NB] =
+static const esp_gatts_attr_db_t gatt_db[BIOMIDI_IDX_MAX] =
 {
     // Service Declaration
-    [IDX_SVC]        =
+    [BIOMIDI_IDX_SERVICE]        =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ,
       16, sizeof(midi_service_uuid), (uint8_t *)&midi_service_uuid}},
 
     /* Characteristic Declaration */
-    [IDX_CHAR_A]     =
+    [BIOMIDI_IDX_CHAR_A]     =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
       CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_writenr_notify}},
 
     /* Characteristic Value */
-    [IDX_CHAR_VAL_A] =
+    [BIOMIDI_IDX_VAL_A] =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_128, (uint8_t *)&midi_characteristics_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
       GATTS_MIDI_CHAR_VAL_LEN_MAX, sizeof(char_value), (uint8_t *)char_value}},
 
     /* Client Characteristic Configuration Descriptor (this is a BLE2902 descriptor) */
-    [IDX_CHAR_CFG_A]  =
+    [BIOMIDI_IDX_CONFIG_A]  =
     {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
       sizeof(uint16_t), sizeof(blemidi_ccc), (uint8_t *)blemidi_ccc}},
 };
@@ -624,7 +624,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             }
             adv_config_done |= SCAN_RSP_CONFIG_FLAG;
 
-            esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, HRS_IDX_NB, SVC_INST_ID);
+            esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, BIOMIDI_IDX_MAX, SVC_INST_ID);
             if (create_attr_ret){
                 ESP_LOGE(BLEMIDI_TAG, "create attr table failed, error code = %x", create_attr_ret);
             }
@@ -635,7 +635,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             break;
         case ESP_GATTS_WRITE_EVT:
             if (!param->write.is_prep){
-                if (midi_handle_table[IDX_CHAR_VAL_A] == param->write.handle ) {
+                if (midi_handle_table[BIOMIDI_IDX_VAL_A] == param->write.handle ) {
                   // the data length of gattc write  must be less than blemidi_mtu.
 #if 0
                   ESP_LOGI(BLEMIDI_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
@@ -700,14 +700,14 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if (param->add_attr_tab.status != ESP_GATT_OK){
                 ESP_LOGE(BLEMIDI_TAG, "create attribute table failed, error code=0x%x", param->add_attr_tab.status);
             }
-            else if (param->add_attr_tab.num_handle != HRS_IDX_NB){
+            else if (param->add_attr_tab.num_handle != BIOMIDI_IDX_MAX){
                 ESP_LOGE(BLEMIDI_TAG, "create attribute table abnormally, num_handle (%d) \
-                        doesn't equal to HRS_IDX_NB(%d)", param->add_attr_tab.num_handle, HRS_IDX_NB);
+                        doesn't equal to BIOMIDI_IDX_MAX(%d)", param->add_attr_tab.num_handle, BIOMIDI_IDX_MAX);
             }
             else {
                 ESP_LOGI(BLEMIDI_TAG, "create attribute table successfully, the number handle = %d\n",param->add_attr_tab.num_handle);
                 memcpy(midi_handle_table, param->add_attr_tab.handles, sizeof(midi_handle_table));
-                esp_ble_gatts_start_service(midi_handle_table[IDX_SVC]);
+                esp_ble_gatts_start_service(midi_handle_table[BIOMIDI_IDX_SERVICE]);
             }
             break;
         }
@@ -731,7 +731,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     /* If event is register event, store the gatts_if for each profile */
     if (event == ESP_GATTS_REG_EVT) {
         if (param->reg.status == ESP_GATT_OK) {
-            midi_profile_tab[PROFILE_APP_IDX].gatts_if = gatts_if;
+            midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if = gatts_if;
         } else {
             ESP_LOGE(BLEMIDI_TAG, "reg app failed, app_id %04x, status %d",
                     param->reg.app_id,
@@ -741,7 +741,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     }
     do {
         int idx;
-        for (idx = 0; idx < PROFILE_NUM; idx++) {
+        for (idx = 0; idx < BIOMIDI_PROFILE_NUM; idx++) {
             /* ESP_GATT_IF_NONE, not specify a certain gatt_if, need to call every profile cb function */
             if (gatts_if == ESP_GATT_IF_NONE || gatts_if == midi_profile_tab[idx].gatts_if) {
                 if (midi_profile_tab[idx].gatts_cb) {
@@ -765,30 +765,23 @@ int32_t blemidi_init(void *_callback_midi_message_received, void *_callback_midi
   blemidi_callback_on_connect = NULL;
   blemidi_callback_on_disconnect = NULL;
 
-  // /* Initialize NVS. */
-  // ret = nvs_flash_init();
-  // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-  //   ESP_ERROR_CHECK(nvs_flash_erase());
-  //   ret = nvs_flash_init();
-  // }
-  // ESP_ERROR_CHECK( ret );
-
   ESP_ERROR_CHECK(esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT));
 
-  /* Initialize Bluedroid. */
+  /* BT Controller and Stack Initialization */
   esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
   ret = esp_bt_controller_init(&bt_cfg);
   if (ret) {
     ESP_LOGE(BLEMIDI_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
     return -1;
   }
-
+  /* Controller is enabled in BLE Mode */
   ret = esp_bt_controller_enable(ESP_BT_MODE_BLE);
   if (ret) {
     ESP_LOGE(BLEMIDI_TAG, "%s enable controller failed: %s", __func__, esp_err_to_name(ret));
     return -2;
   }
 
+  /* Initialize Bluedroid Stack */
   ret = esp_bluedroid_init();
   if (ret) {
     ESP_LOGE(BLEMIDI_TAG, "%s init bluetooth failed: %s", __func__, esp_err_to_name(ret));
@@ -800,6 +793,15 @@ int32_t blemidi_init(void *_callback_midi_message_received, void *_callback_midi
     ESP_LOGE(BLEMIDI_TAG, "%s enable bluetooth failed: %s", __func__, esp_err_to_name(ret));
     return -4;
   }
+
+  /**
+   * The Bluetooth stack is up and running at this point in the program flow, however the functionality of the
+   * application has not been defined yet. The functionality is defined by reacting to events such as what
+   * happens when another device tries to read or write parameters and establish a connection. The two main
+   * managers of events are the GAP and GATT event handlers. The application needs to register a callback
+   * function for each event handler in order to let the application know which functions are going to handle
+   * the GAP and GATT events:
+  */
 
   ret = esp_ble_gatts_register_callback(gatts_event_handler);
   if (ret){
@@ -813,7 +815,7 @@ int32_t blemidi_init(void *_callback_midi_message_received, void *_callback_midi
     return -6;
   }
 
-  ret = esp_ble_gatts_app_register(ESP_APP_ID);
+  ret = esp_ble_gatts_app_register(BIOMIDI_APP_ID);
   if (ret){
     ESP_LOGE(BLEMIDI_TAG, "gatts app register error, error code = %x", ret);
     return -7;
