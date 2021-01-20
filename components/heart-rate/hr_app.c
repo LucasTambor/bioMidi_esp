@@ -35,6 +35,13 @@ void vHeartRateTask( void *pvParameters ) {
         return;
     }
 
+    // Wait for dependent tasks
+    xEventGroupWaitBits(xEventGroupTasks,
+                        BIT_TASK_DATA_STREAM,
+                        pdFALSE,
+                        pdTRUE,
+                        portMAX_DELAY);
+                        
 	// Signalize task successfully creation
 	xEventGroupSetBits(xEventGroupTasks, BIT_TASK_HEART_RATE);
     ESP_LOGI(TAG, "Heart Rate Initialized");
@@ -42,7 +49,10 @@ void vHeartRateTask( void *pvParameters ) {
     while(1) {
         err = heart_rate_read(&heart_rate_data);
 
-        heart_rate_data_stream();
+        // Check if Data Stream is enabled
+        if(xEventGroupGetBits(xEventGroupDataStreamMode) & BIT_UART_STREAM_MODE_ALL) {
+            heart_rate_data_stream();
+        }
 
         vTaskDelay(pdMS_TO_TICKS(10));
     }

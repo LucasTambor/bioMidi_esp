@@ -4,11 +4,14 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
+#include "freertos/event_groups.h"
 
 extern QueueHandle_t xQueueUartWriteBuffer;
 extern QueueHandle_t xQueueUartStreamMicBuffer;
 extern QueueHandle_t xQueueUartStreamFFTBuffer;
 extern SemaphoreHandle_t xUartModeMutex;
+
+extern EventGroupHandle_t xEventGroupDataStreamMode;
 
 typedef enum {
     UART_DATA_ID_ACCEL_X = 0,
@@ -26,8 +29,13 @@ typedef enum {
     UART_MODE_DATA_STREAM = 0,
     UART_MODE_MIC_STREAM,
     UART_MODE_FFT_STREAM,
+    UART_MODE_DISABLE,
 }uart_mode_e;
 
+// Bits for event group
+#define BIT_UART_STREAM_MODE_ALL (1<<0)
+#define BIT_UART_STREAM_MODE_MIC (1<<1)
+#define BIT_UART_STREAM_MODE_FFT (1<<2)
 typedef struct UART_data_s
 {
     uart_data_id_e id;     // Data ID

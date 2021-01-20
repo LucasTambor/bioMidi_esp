@@ -144,7 +144,7 @@ void vMPU6050Task( void *pvParameters ) {
 
     // Wait for I2C tasks
     xEventGroupWaitBits(xEventGroupTasks,
-                        BIT_TASK_I2C_READ | BIT_TASK_I2C_WRITE,
+                        BIT_TASK_I2C_READ | BIT_TASK_I2C_WRITE | BIT_TASK_DATA_STREAM,
                         pdFALSE,
                         pdTRUE,
                         portMAX_DELAY);
@@ -192,7 +192,10 @@ void vMPU6050Task( void *pvParameters ) {
         if(xEventGroupGetBits(xEventGroupApp) & BIT_APP_SEND_DATA) {
             mpu6050_send_data(real_angle);
         }
-        // mpu6050_data_stream();
+
+        if(xEventGroupGetBits(xEventGroupDataStreamMode) & BIT_UART_STREAM_MODE_ALL) {
+            mpu6050_data_stream();
+        }
 
         vTaskDelay(pdMS_TO_TICKS(MPU_6050_TASK_PERIOD_MS));
     }

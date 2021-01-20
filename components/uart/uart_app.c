@@ -9,6 +9,7 @@ static const char *TAG = "UART_App";
 QueueHandle_t xQueueUartWriteBuffer;
 QueueHandle_t xQueueUartStreamMicBuffer;
 QueueHandle_t xQueueUartStreamFFTBuffer;
+EventGroupHandle_t xEventGroupDataStreamMode;
 
 SemaphoreHandle_t xUartModeMutex;
 
@@ -25,6 +26,25 @@ void uart_set_stream_mode(uart_mode_e new_mode) {
         mode = new_mode;
         ESP_LOGI(TAG, "New Mode: %d", mode);
         xSemaphoreGive(xUartModeMutex);
+
+        // Set group bits
+        switch(mode) {
+            case UART_MODE_DISABLE:
+                xEventGroupClearBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_ALL | BIT_UART_STREAM_MODE_FFT | BIT_UART_STREAM_MODE_MIC);
+            break;
+            case UART_MODE_FFT_STREAM:
+                xEventGroupClearBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_ALL | BIT_UART_STREAM_MODE_MIC);
+                xEventGroupSetBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_FFT);
+            break;
+            case UART_MODE_MIC_STREAM:
+                xEventGroupClearBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_ALL | BIT_UART_STREAM_MODE_FFT);
+                xEventGroupSetBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_MIC);
+            break;
+            case UART_MODE_DATA_STREAM:
+                xEventGroupClearBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_MIC | BIT_UART_STREAM_MODE_FFT);
+                xEventGroupSetBits(xEventGroupDataStreamMode, BIT_UART_STREAM_MODE_ALL);
+            break;
+        }
     }
     // Clear Plotter
 }
@@ -47,12 +67,11 @@ void vDataStream( void *pvParameters ) {
         return;
     }
 
-    // Wait for tasks
-    xEventGroupWaitBits(xEventGroupTasks,
-                        BIT_TASK_MPU6050 | BIT_TASK_MIC | BIT_TASK_BMP280 | BIT_TASK_HEART_RATE,
-                        pdFALSE,
-                        pdTRUE,
-                        portMAX_DELAY);
+    // Init Event Group for Data stream mode
+    xEventGroupDataStreamMode = xEventGroupCreate();
+    if(xEventGroupDataStreamMode == NULL) {
+        ESP_LOGE(TAG, "ERROR Creating xEventGroupDataStreamMode");
+    }
 
     // Init UART
     ESP_ERROR_CHECK(uart_init());
@@ -67,6 +86,9 @@ void vDataStream( void *pvParameters ) {
     memset(&data_packet, 0, sizeof(data_stream_t));
 
     bool send_data = false;
+
+    // Start in disable mode
+    uart_set_stream_mode(UART_MODE_DISABLE);
 
     while(1) {
         switch(mode) {
@@ -130,6 +152,9 @@ void vDataStream( void *pvParameters ) {
                             }
                     }
                 }
+            break;
+            case UART_MODE_DISABLE:
+                vTaskDelay(pdMS_TO_TICKS(1000));
             break;
             default:
                 ESP_LOGE(TAG, "INVALID MODE");
