@@ -129,8 +129,7 @@ void app_main(void)
                             NULL,
                             osPriorityHigh,
                             &xTaskUartHandle,
-                            PRO_CPU_NUM);
-
+                            APP_CPU_NUM);
 
     //Core 0
     xTaskCreatePinnedToCore(vMidiController,

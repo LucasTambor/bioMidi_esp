@@ -1,5 +1,5 @@
-#ifndef _MPU6050_DRIVER_H_
-#define _MPU6050_DRIVER_H_
+#ifndef _HR_DRIVER_H_
+#define _HR_DRIVER_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -20,4 +20,4 @@ esp_err_t heart_rate_read(uint16_t * data);
 }
 #endif
 
-#endif //_MPU6050_DRIVER_H_
+#endif //_HR_DRIVER_H_

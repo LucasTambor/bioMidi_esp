@@ -19,6 +19,7 @@
 #include "bmp280_app.h"
 #include "mpu6050_app.h"
 #include "hr_app.h"
+#include "battery_app.h"
 
 #include "blemidi.h"
 
@@ -28,6 +29,7 @@ TaskHandle_t xTaskMicHandle;
 TaskHandle_t xTaskBMPHandle;
 TaskHandle_t xTaskMPUHandle;
 TaskHandle_t xTaskHeartRateHandle;
+TaskHandle_t xTaskBatteryHandle;
 
 //**********************************************************************************************************
 
@@ -280,6 +282,14 @@ void vMidiController(void * pvParameters) {
                             APP_CPU_NUM
                             );
 
+    xTaskCreatePinnedToCore(vBatteryMeasurementTask,
+                            "vBattery",
+                            STACK_SIZE_2048,
+                            NULL,
+                            osPriorityLow,
+                            &xTaskBatteryHandle,
+                            APP_CPU_NUM);
+
     //TODO - Clear memory after complete tasks initialization
 
     // Add touch callbacks
@@ -292,7 +302,12 @@ void vMidiController(void * pvParameters) {
     while(1) {
 
         // ESP_LOGI(TAG, "BioMidi State: %s", state_to_string[bio_midi_state], value);
-        blemidi_send_battery_level(55);
+        uint8_t battery_level;
+        if(battery_app_read_percent(&battery_level) != ESP_OK) {
+            ESP_LOGE(TAG, "ERROR Reading Battery Level");
+        }
+        blemidi_send_battery_level(battery_level);
+        
         switch(bio_midi_state) {
             case STATE_IDLE:
             {

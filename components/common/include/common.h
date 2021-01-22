@@ -20,6 +20,7 @@
 #define BIT_TASK_HEART_RATE     (1<<7)
 #define BIT_TASK_DATA_STREAM    (1<<8)
 #define BIT_TASK_CONSOLE        (1<<9)
+#define BIT_TASK_BATTERY_MAN    (1<<10)
 
 extern EventGroupHandle_t xEventGroupTasks;
 
