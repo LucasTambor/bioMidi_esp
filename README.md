@@ -25,7 +25,7 @@ https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system
 https://developer.android.com/guide/topics/connectivity/bluetooth-le?hl=pt-br
 https://learn.sparkfun.com/tutorials/midi-ble-tutorial/all
 https://www.novelbits.io/bluetooth-gatt-services-characteristics/
-
+https://circuitdigest.com/microcontroller-projects/esp32-ble-server-how-to-use-gatt-services-for-battery-level-indication
 
 # Dados coletados
 
@@ -119,3 +119,7 @@ The data that the server exposes is structured as attributes:
 
 ## The Generic Attribute Profile (GATT)
 
+# TODO
+
+* Battery monitoring
+* Test

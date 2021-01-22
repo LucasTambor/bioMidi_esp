@@ -46,15 +46,16 @@
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 
+// Services
+#include "ble_common.h"
+#include "ble_midi_service.h"
+
+
 #define BIOMIDI_PROFILE_NUM                 1       // Number of profiles in application
 #define BIOMIDI_APP_PROFILE_IDX             0       // Index of BioMidi app
 #define BIOMIDI_APP_ID                      0x55    // The Application Profile ID, which is an user-assigned number to identify each profile
 #define SVC_INST_ID                         0
 
-/* The max length of characteristic value. When the GATT client performs a write or prepare write operation,
-*  the data length must be less than GATTS_MIDI_CHAR_VAL_LEN_MAX.
-*/
-#define GATTS_MIDI_CHAR_VAL_LEN_MAX 100
 #define PREPARE_BUF_MAX_SIZE        2048
 #define CHAR_DECLARATION_SIZE       (sizeof(uint8_t))
 
@@ -66,45 +67,17 @@ static uint8_t adv_config_done       = 0;
 // the MTU can be changed by the client during runtime
 static size_t blemidi_mtu = GATTS_MIDI_CHAR_VAL_LEN_MAX - 3;
 
-// This timestamp should be increased each mS from the application via blemidi_tick_ms() call:
-static uint16_t blemidi_timestamp = 0;
 
-// we buffer outgoing MIDI messages for 10 mS - this should avoid that multiple BLE packets have to be queued for small messages
-static uint8_t  blemidi_outbuffer[BLEMIDI_NUM_PORTS][GATTS_MIDI_CHAR_VAL_LEN_MAX];
-static uint16_t blemidi_outbuffer_len[BLEMIDI_NUM_PORTS];
-static uint16_t blemidi_outbuffer_timestamp_last_flush = 0;
 
-// to handled continued SysEx
-static size_t   blemidi_continued_sysex_pos[BLEMIDI_NUM_PORTS];
 
-/* Enumeration of the services and characteristics */
-enum
-{
-    BIOMIDI_IDX_SERVICE,
-    BIOMIDI_IDX_CHAR_A,
-    BIOMIDI_IDX_VAL_A,
-    BIOMIDI_IDX_CONFIG_A,
-
-    BIOMIDI_IDX_MAX,
-};
-uint16_t midi_handle_table[BIOMIDI_IDX_MAX];
 
 typedef struct {
     uint8_t                 *prepare_buf;
     int                     prepare_len;
+    uint16_t                handle;
 } prepare_type_env_t;
 
 static prepare_type_env_t prepare_write_env;
-
-static uint8_t midi_service_uuid[16] = {
-    /* LSB <--------------------------------------------------------------------------------> MSB */
-    0x00, 0xC7, 0xC4, 0x4E, 0xE3, 0x6C, 0x51, 0xA7, 0x33, 0x4B, 0xE8, 0xED, 0x5A, 0x0E, 0xB8, 0x03
-};
-
-static const uint8_t midi_characteristics_uuid[16] = {
-    /* LSB <--------------------------------------------------------------------------------> MSB */
-    0xF3, 0x6B, 0x10, 0x9D, 0x66, 0xF2, 0xA9, 0xA1, 0x12, 0x41, 0x68, 0x38, 0xDB, 0xE5, 0x72, 0x77
-};
 
 
 /* The length of adv data must be less than 31 bytes */
@@ -177,24 +150,19 @@ static struct gatts_profile_inst midi_profile_tab[BIOMIDI_PROFILE_NUM] = {
     },
 };
 
-/* Service */
-static const uint16_t primary_service_uuid         = ESP_GATT_UUID_PRI_SERVICE;
-static const uint16_t character_declaration_uuid   = ESP_GATT_UUID_CHAR_DECLARE;
-static const uint16_t character_client_config_uuid = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-// static const uint8_t char_prop_read                = ESP_GATT_CHAR_PROP_BIT_READ;
-// static const uint8_t char_prop_write               = ESP_GATT_CHAR_PROP_BIT_WRITE;
-// static const uint8_t char_prop_read_write_notify   = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY;
-// static const uint8_t char_prop_read_write_writenr_notify = ESP_GATT_CHAR_PROP_BIT_WRITE | ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY | ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
-static const uint8_t char_prop_read_writenr_notify = ESP_GATT_CHAR_PROP_BIT_READ | ESP_GATT_CHAR_PROP_BIT_NOTIFY | ESP_GATT_CHAR_PROP_BIT_WRITE_NR;
 
-static const uint8_t char_value[3]                 = {0x80, 0x80, 0xfe};
-static const uint8_t blemidi_ccc[2]                = {0x00, 0x00};
 
 void (*blemidi_callback_midi_message_received)(uint8_t blemidi_port, uint16_t timestamp, uint8_t midi_status, uint8_t *remaining_message, size_t len, size_t continued_sysex_pos);
 void (*blemidi_callback_on_connect)();
 void (*blemidi_callback_on_disconnect)();
 
+// This timestamp should be increased each mS from the application via blemidi_tick_ms() call:
+static uint16_t blemidi_timestamp = 0;
 
+// we buffer outgoing MIDI messages for 10 mS - this should avoid that multiple BLE packets have to be queued for small messages
+static uint8_t  blemidi_outbuffer[BLEMIDI_NUM_PORTS][GATTS_MIDI_CHAR_VAL_LEN_MAX];
+static uint16_t blemidi_outbuffer_len[BLEMIDI_NUM_PORTS];
+static uint16_t blemidi_outbuffer_timestamp_last_flush = 0;
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Timestamp handling
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +203,7 @@ int32_t blemidi_outbuffer_flush(uint8_t blemidi_port)
     return -1; // invalid port
 
   if( blemidi_outbuffer_len[blemidi_port] > 0 ) {
-    esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, midi_handle_table[BIOMIDI_IDX_VAL_A], blemidi_outbuffer_len[blemidi_port], blemidi_outbuffer[blemidi_port], false);
+    esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, midi_handle_table[BIOMIDI_IDX_VAL], blemidi_outbuffer_len[blemidi_port], blemidi_outbuffer[blemidi_port], false);
     blemidi_outbuffer_len[blemidi_port] = 0;
   }
   return 0; // no error
@@ -272,7 +240,8 @@ static int32_t blemidi_outbuffer_push(uint8_t blemidi_port, uint8_t *stream, siz
           packet_len -= 1;
           memcpy((uint8_t *)packet + 1, stream, len);
         }
-        esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, midi_handle_table[BIOMIDI_IDX_VAL_A], packet_len, packet, false);
+
+        esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, midi_handle_table[BIOMIDI_IDX_VAL], packet_len, packet, false);
         free(packet);
       }
     }
@@ -333,170 +302,10 @@ int32_t blemidi_send_message(uint8_t blemidi_port, uint8_t *stream, size_t len)
 
   return 0; // no error
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// For internal usage only: receives a BLE MIDI packet and calls the specified callback function.
-// The user will specify this callback while calling blemidi_init()
-////////////////////////////////////////////////////////////////////////////////////////////////////
-static int32_t blemidi_receive_packet(uint8_t blemidi_port, uint8_t *stream, size_t len, void *_callback_midi_message_received)
-{
-  void (*callback_midi_message_received)(uint8_t blemidi_port, uint16_t timestamp, uint8_t midi_status, uint8_t *remaining_message, size_t len, size_t continued_sysex_pos) = _callback_midi_message_received;
-
-  if( blemidi_port >= BLEMIDI_NUM_PORTS )
-    return -1; // invalid port
-
-  ESP_LOGI(BLEMIDI_TAG, "receive_packet blemidi_port=%d, len=%d, stream:", blemidi_port, len);
-  esp_log_buffer_hex(BLEMIDI_TAG, stream, len);
-
-  // detect continued SysEx
-  uint8_t continued_sysex = 0;
-  if( len > 2 && (stream[0] & 0x80) && !(stream[1] & 0x80)) {
-    continued_sysex = 1;
-  } else {
-    blemidi_continued_sysex_pos[blemidi_port] = 0;
-  }
-
-
-  if( len < 3 ) {
-    ESP_LOGE(BLEMIDI_TAG, "stream length should be >=3");
-    return -1;
-  } else if( !(stream[0] & 0x80) ) {
-    ESP_LOGE(BLEMIDI_TAG, "missing timestampHigh");
-    return -2;
-  } else {
-    size_t pos = 0;
-
-    // getting timestamp
-    uint16_t timestamp = (stream[pos++] & 0x3f) << 7;
-
-    // parsing stream
-    {
-      //! Number if expected bytes for a common MIDI event - 1
-      const uint8_t midi_expected_bytes_common[8] = {
-        2, // Note On
-        2, // Note Off
-        2, // Poly Preasure
-        2, // Controller
-        1, // Program Change
-        1, // Channel Preasure
-        2, // Pitch Bender
-        0, // System Message - must be zero, so that mios32_midi_expected_bytes_system[] will be used
-      };
-
-      //! Number if expected bytes for a system MIDI event - 1
-      const uint8_t midi_expected_bytes_system[16] = {
-        1, // SysEx Begin (endless until SysEx End F7)
-        1, // MTC Data frame
-        2, // Song Position
-        1, // Song Select
-        0, // Reserved
-        0, // Reserved
-        0, // Request Tuning Calibration
-        0, // SysEx End
-
-        // Note: just only for documentation, Realtime Messages don't change the running status
-        0, // MIDI Clock
-        0, // MIDI Tick
-        0, // MIDI Start
-        0, // MIDI Continue
-        0, // MIDI Stop
-        0, // Reserved
-        0, // Active Sense
-        0, // Reset
-      };
-
-      uint8_t midi_status = continued_sysex ? 0xf0 : 0x00;
-
-      while( pos < len ) {
-        if( !(stream[pos] & 0x80) ) {
-          if( !continued_sysex ) {
-            ESP_LOGE(BLEMIDI_TAG, "missing timestampLow in parsed message");
-            return -3;
-          }
-        } else {
-          timestamp &= ~0x7f;
-          timestamp |= stream[pos++] & 0x7f;
-          continued_sysex = 0;
-          blemidi_continued_sysex_pos[blemidi_port] = 0;
-        }
-
-        if( stream[pos] & 0x80 ) {
-          midi_status = stream[pos++];
-        }
-
-        if( midi_status == 0xf0 ) {
-          size_t num_bytes;
-          for(num_bytes=0; stream[pos+num_bytes] < 0x80; ++num_bytes) {
-            if( (pos+num_bytes) >= len ) {
-              break;
-            }
-          }
-          if( _callback_midi_message_received ) {
-            callback_midi_message_received(blemidi_port, timestamp, midi_status, &stream[pos], num_bytes, blemidi_continued_sysex_pos[blemidi_port]);
-          }
-          pos += num_bytes;
-          blemidi_continued_sysex_pos[blemidi_port] += num_bytes; // we expect another packet with the remaining SysEx stream
-        } else {
-          uint8_t num_bytes = midi_expected_bytes_common[(midi_status >> 4) & 0x7];
-          if( num_bytes == 0 ) { // System Message
-            num_bytes = midi_expected_bytes_system[midi_status & 0xf];
-          }
-
-          if( (pos+num_bytes) > len ) {
-            ESP_LOGE(BLEMIDI_TAG, "missing %d bytes in parsed message", num_bytes);
-            return -5;
-          } else {
-            if( _callback_midi_message_received ) {
-              callback_midi_message_received(blemidi_port, timestamp, midi_status, &stream[pos], num_bytes, 0);
-            }
-            pos += num_bytes;
-          }
-        }
-      }
-    }
-  }
-
-  return 0; // no error
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Dummy callback for demo and debugging purposes
-////////////////////////////////////////////////////////////////////////////////////////////////////
-void blemidi_receive_packet_callback_for_debugging(uint8_t blemidi_port, uint16_t timestamp, uint8_t midi_status, uint8_t *remaining_message, size_t len, size_t continued_sysex_pos)
-{
-  ESP_LOGI(BLEMIDI_TAG, "receive_packet CALLBACK blemidi_port=%d, timestamp=%d, midi_status=0x%02x, len=%d, continued_sysex_pos=%d, remaining_message:", blemidi_port, timestamp, midi_status, len, continued_sysex_pos);
-  esp_log_buffer_hex(BLEMIDI_TAG, remaining_message, len);
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // From GATT Server Demo (customized for BLE MIDI service)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/* Full Database Description - Used to add attributes into the database */
-static const esp_gatts_attr_db_t gatt_db[BIOMIDI_IDX_MAX] =
-{
-    // Service Declaration
-    [BIOMIDI_IDX_SERVICE]        =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&primary_service_uuid, ESP_GATT_PERM_READ,
-      16, sizeof(midi_service_uuid), (uint8_t *)&midi_service_uuid}},
-
-    /* Characteristic Declaration */
-    [BIOMIDI_IDX_CHAR_A]     =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_declaration_uuid, ESP_GATT_PERM_READ,
-      CHAR_DECLARATION_SIZE, CHAR_DECLARATION_SIZE, (uint8_t *)&char_prop_read_writenr_notify}},
-
-    /* Characteristic Value */
-    [BIOMIDI_IDX_VAL_A] =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_128, (uint8_t *)&midi_characteristics_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-      GATTS_MIDI_CHAR_VAL_LEN_MAX, sizeof(char_value), (uint8_t *)char_value}},
-
-    /* Client Characteristic Configuration Descriptor (this is a BLE2902 descriptor) */
-    [BIOMIDI_IDX_CONFIG_A]  =
-    {{ESP_GATT_AUTO_RSP}, {ESP_UUID_LEN_16, (uint8_t *)&character_client_config_uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE,
-      sizeof(uint16_t), sizeof(blemidi_ccc), (uint8_t *)blemidi_ccc}},
-};
 
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param)
 {
@@ -610,7 +419,6 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if (set_dev_name_ret){
                 ESP_LOGE(BLEMIDI_TAG, "set device name failed, error code = %x", set_dev_name_ret);
             }
-
             //config adv data
             esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
             if (ret){
@@ -624,7 +432,8 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             }
             adv_config_done |= SCAN_RSP_CONFIG_FLAG;
 
-            esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, BIOMIDI_IDX_MAX, SVC_INST_ID);
+            // Register Attributes Tables
+            esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(midi_serv_gatt_db, gatts_if, BIOMIDI_IDX_MAX, SVC_INST_ID);
             if (create_attr_ret){
                 ESP_LOGE(BLEMIDI_TAG, "create attr table failed, error code = %x", create_attr_ret);
             }
@@ -634,20 +443,27 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             ESP_LOGI(BLEMIDI_TAG, "ESP_GATTS_READ_EVT");
             break;
         case ESP_GATTS_WRITE_EVT:
+        {
+            esp_gatt_status_t status = ESP_GATT_WRITE_NOT_PERMIT;
+            int attrIndex;
+
             if (!param->write.is_prep){
-                if (midi_handle_table[BIOMIDI_IDX_VAL_A] == param->write.handle ) {
-                  // the data length of gattc write  must be less than blemidi_mtu.
-#if 0
-                  ESP_LOGI(BLEMIDI_TAG, "GATT_WRITE_EVT, handle = %d, value len = %d, value :", param->write.handle, param->write.len);
-                  esp_log_buffer_hex(BLEMIDI_TAG, param->write.value, param->write.len);
-#endif
-                  blemidi_receive_packet(0, param->write.value, param->write.len, blemidi_callback_midi_message_received);
+
+                if( (attrIndex = getAttributeIndexByMIDIHandle(param->write.handle)) < BIOMIDI_IDX_MAX)
+                {
+                    ESP_LOGI(BLEMIDI_TAG,"BIO MIDI WRITE");
+                    handleMIDIWriteEvent(attrIndex, param->write.value, param->write.len);
+                    status = ESP_GATT_OK;
                 }
+
+
             } else {
                 /* handle prepare write */
+                prepare_write_env.handle = param->write.handle;  // keep track of the handle for ESP_GATTS_EXEC_WRITE_EVT since it doesn't provide it.
                 blemidi_prepare_write_event_env(gatts_if, &prepare_write_env, param);
             }
             break;
+        }
         case ESP_GATTS_EXEC_WRITE_EVT:
             // the length of gattc prepare write data must be less than blemidi_mtu.
             ESP_LOGI(BLEMIDI_TAG, "ESP_GATTS_EXEC_WRITE_EVT");
@@ -700,15 +516,24 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             if (param->add_attr_tab.status != ESP_GATT_OK){
                 ESP_LOGE(BLEMIDI_TAG, "create attribute table failed, error code=0x%x", param->add_attr_tab.status);
             }
-            else if (param->add_attr_tab.num_handle != BIOMIDI_IDX_MAX){
-                ESP_LOGE(BLEMIDI_TAG, "create attribute table abnormally, num_handle (%d) \
-                        doesn't equal to BIOMIDI_IDX_MAX(%d)", param->add_attr_tab.num_handle, BIOMIDI_IDX_MAX);
+
+            //Add calls to start external services
+            // else if(param->add_attr_tab.svc_uuid.uuid.uuid32 == midi_service_uuid)
+            // {
+            // }
+            else{
+				if(param->add_attr_tab.num_handle != BIOMIDI_IDX_MAX)
+				{
+					ESP_LOGE(BLEMIDI_TAG,"create attribute table abnormally, num_handle (%d) isn't equal to BIOMIDI_IDX_MAX(%d)", param->add_attr_tab.num_handle, BIOMIDI_IDX_MAX);
+				}
+				else
+				{
+					ESP_LOGI(BLEMIDI_TAG,"create attribute table successfully, the number handle = %d\n",param->add_attr_tab.num_handle);
+					memcpy(midi_handle_table, param->add_attr_tab.handles, sizeof(midi_handle_table));
+					esp_ble_gatts_start_service(midi_handle_table[BIOMIDI_IDX_SERVICE]);
+				}
             }
-            else {
-                ESP_LOGI(BLEMIDI_TAG, "create attribute table successfully, the number handle = %d\n",param->add_attr_tab.num_handle);
-                memcpy(midi_handle_table, param->add_attr_tab.handles, sizeof(midi_handle_table));
-                esp_ble_gatts_start_service(midi_handle_table[BIOMIDI_IDX_SERVICE]);
-            }
+
             break;
         }
         case ESP_GATTS_STOP_EVT:

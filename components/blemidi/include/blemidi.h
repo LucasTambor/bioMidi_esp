@@ -50,7 +50,6 @@ extern "C" {
 #endif
 
 #ifndef BLEMIDI_NUM_PORTS
-#define BLEMIDI_NUM_PORTS 1
 #endif
 
 #ifndef BLEMIDI_OUTBUFFER_FLUSH_MS
