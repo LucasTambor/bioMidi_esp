@@ -292,7 +292,7 @@ void vMidiController(void * pvParameters) {
     while(1) {
 
         // ESP_LOGI(TAG, "BioMidi State: %s", state_to_string[bio_midi_state], value);
-
+        blemidi_send_battery_level(55);
         switch(bio_midi_state) {
             case STATE_IDLE:
             {

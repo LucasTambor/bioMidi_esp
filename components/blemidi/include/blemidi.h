@@ -78,6 +78,16 @@ extern int32_t blemidi_init(void *callback_midi_message_received, void *_callbac
 extern int32_t blemidi_send_message(uint8_t blemidi_port, uint8_t *stream, size_t len);
 
 /**
+ * @brief Sends a BLE Battery Level message
+ *
+ * @param  level          0 - 100 value
+ *
+ * @return < 0 on errors
+ *
+ */
+extern int32_t blemidi_send_battery_level(uint8_t level);
+
+/**
  * @brief Flush Output Buffer (normally done by blemidi_tick_ms each 15 mS)
  *
  * @param  blemidi_port currently always 0 expected (we might support multiple ports in future)

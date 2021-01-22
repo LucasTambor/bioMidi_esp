@@ -49,6 +49,7 @@
 // Services
 #include "ble_common.h"
 #include "ble_midi_service.h"
+#include "ble_battery_service.h"
 
 
 #define BIOMIDI_PROFILE_NUM                 1       // Number of profiles in application
@@ -302,6 +303,17 @@ int32_t blemidi_send_message(uint8_t blemidi_port, uint8_t *stream, size_t len)
 
   return 0; // no error
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Sends a BLE Battery Level
+////////////////////////////////////////////////////////////////////////////////////////////////////
+int32_t blemidi_send_battery_level(uint8_t level) {
+    // esp_err_t err = ESP_OK;
+    uint8_t bat_level = level;
+    esp_ble_gatts_send_indicate(midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].gatts_if, midi_profile_tab[BIOMIDI_APP_PROFILE_IDX].conn_id, battery_handle_table[BIOMIDI_IDX_VAL], 1, &bat_level, false);
+    return 0;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // From GATT Server Demo (customized for BLE MIDI service)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -435,7 +447,11 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             // Register Attributes Tables
             esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(midi_serv_gatt_db, gatts_if, BIOMIDI_IDX_MAX, SVC_INST_ID);
             if (create_attr_ret){
-                ESP_LOGE(BLEMIDI_TAG, "create attr table failed, error code = %x", create_attr_ret);
+                ESP_LOGE(BLEMIDI_TAG, "create midi attr table failed, error code = %x", create_attr_ret);
+            }
+            create_attr_ret = esp_ble_gatts_create_attr_tab(battery_serv_gatt_db, gatts_if, BATTERY_IDX_MAX, SVC_INST_ID);
+            if (create_attr_ret){
+                ESP_LOGE(BLEMIDI_TAG, "create battery attr table failed, error code = %x", create_attr_ret);
             }
         }
             break;
@@ -518,9 +534,18 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
             }
 
             //Add calls to start external services
-            // else if(param->add_attr_tab.svc_uuid.uuid.uuid32 == midi_service_uuid)
-            // {
-            // }
+            else if(param->add_attr_tab.svc_uuid.uuid.uuid16 == battery_service_uuid) {
+				if(param->add_attr_tab.num_handle != BATTERY_IDX_MAX)
+				{
+					ESP_LOGE(BLEMIDI_TAG,"create attribute table abnormally, num_handle (%d) isn't equal to BATTERY_IDX_MAX(%d)", param->add_attr_tab.num_handle, BATTERY_IDX_MAX);
+				}
+				else
+				{
+					ESP_LOGI(BLEMIDI_TAG,"create attribute table successfully, the number handle = %d\n",param->add_attr_tab.num_handle);
+					memcpy(battery_handle_table, param->add_attr_tab.handles, sizeof(battery_handle_table));
+					esp_ble_gatts_start_service(battery_handle_table[BATTERY_IDX_SERVICE]);
+				}
+            }
             else{
 				if(param->add_attr_tab.num_handle != BIOMIDI_IDX_MAX)
 				{
