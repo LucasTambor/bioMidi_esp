@@ -121,5 +121,4 @@ The data that the server exposes is structured as attributes:
 
 # TODO
 
-* Battery monitoring
 * Test

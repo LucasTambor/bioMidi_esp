@@ -152,6 +152,8 @@ const char * data_id_to_string[DATA_ID_MAX] = {"DATA_ID_ROLL","DATA_ID_PITCH", "
                                               "DATA_ID_PRESSURE", "DATA_ID_FFT", "DATA_ID_HEART_RATE"};
 
 static uint8_t map_value_u8(float value, float in_min, float in_max, uint8_t out_min, uint8_t out_max) {
+    if(value > in_max) return out_max;
+    if(value < in_min) return out_min;
     return (uint8_t) ((value - in_min) * ((float) out_max - (float) out_min) / (in_max - in_min) + (float) out_min);
 }
 
@@ -163,6 +165,7 @@ esp_err_t midi_proccess_data(data_id_e id, float value ) {
         .data = 0,
         .control_number = 0
     };
+    static uint8_t last_value[DATA_ID_MAX] = {0};
     switch(id) {
         case DATA_ID_ROLL:
             midi_message.control_number = MIDI_CONTROLER_GPC_1;
@@ -209,9 +212,15 @@ esp_err_t midi_proccess_data(data_id_e id, float value ) {
     uint8_t message[3];
     message[0] = (uint8_t) midi_message.status.midi_status;
     message[1] = (uint8_t) midi_message.control_number;
-    message[3] = midi_message.data;
+    message[2] = midi_message.data;
 
-    ESP_LOGI(TAG, "0x%X | 0x%X | 0x%X ", message[0], message[1], message[2]);
+    // Do not send repeated messages
+    if(last_value[id] == midi_message.data){
+        last_value[id] = midi_message.data;
+        return ESP_OK;
+    }
+    last_value[id] = midi_message.data;
+    ESP_LOGI(TAG, "0x%X | 0x%X | 0x%X - %d ", message[0], message[1], message[2], message[2]);
     blemidi_tick();
     if(blemidi_send_message(0, message, 3) < 0 ) {
         ESP_LOGE(TAG, "ERROR sending message to BLEMIDI");
@@ -307,7 +316,7 @@ void vMidiController(void * pvParameters) {
             ESP_LOGE(TAG, "ERROR Reading Battery Level");
         }
         blemidi_send_battery_level(battery_level);
-        
+
         switch(bio_midi_state) {
             case STATE_IDLE:
             {
